@@ -1,0 +1,53 @@
+# Wyniki pośrednie .NET; gotowa aplikacja jest celowo wersjonowana poniżej.
+**/[Bb]in/
+**/[Oo]bj/
+**/TestResults/
+**/artifacts/
+**/publish/
+/build/*
+!/build/Mikaschi-Studio-Tools-win-x64/
+!/build/Mikaschi-Studio-Tools-win-x64/**
+
+# Pliki lokalne IDE i systemu.
+.vs/
+.idea/
+.vscode/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.lscache
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logi, diagnostyka i pliki tymczasowe.
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+_diagnostics/
+temp.txt
+
+# Dane użytkownika i lokalne repozytoria referencyjne.
+*.otbm
+*.otmm
+/forgottenserver/
+/otclient/
+/rme/
+/remeres-map-editor-redux/
+/ItemEditor/
+/ClientConverter-master/
+/AGENTS.md
+/.agents/
+/.codex/
+
+# Pozostałe ekosystemy używane tylko lokalnie.
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+node_modules/
+coverage/

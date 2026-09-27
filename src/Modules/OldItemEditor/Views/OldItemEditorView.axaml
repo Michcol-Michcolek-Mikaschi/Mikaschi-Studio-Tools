@@ -1,0 +1,292 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modules.OldItemEditor.ViewModels"
+             x:Class="Modules.OldItemEditor.Views.OldItemEditorView"
+             x:DataType="vm:OldItemEditorViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.old-section">
+            <Setter Property="Background" Value="#0C1424"/>
+            <Setter Property="BorderBrush" Value="#22314A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+        <Style Selector="TextBlock.old-label">
+            <Setter Property="Foreground" Value="#93A9C6"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="11.5"/>
+        </Style>
+        <Style Selector="CheckBox.old-flag">
+            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="MinHeight" Value="24"/>
+        </Style>
+        <Style Selector="Button.old-toolbar">
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="12,6"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Background="#050911">
+        <Border Grid.Row="0" Background="#0B1120" BorderBrush="#1E2A3D" BorderThickness="0,0,0,1">
+            <Menu Background="Transparent" HorizontalAlignment="Left">
+                <MenuItem Header="Plik">
+                    <MenuItem Header="Nowy" Command="{Binding NewDocumentCommand}"/>
+                    <MenuItem Header="Otwórz…" Click="OpenOtb_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Zapisz" Command="{Binding SaveCommand}"/>
+                    <MenuItem Header="Zapisz jako…" Click="SaveAsOtb_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Preferencje klienta" Click="Preferences_Click"/>
+                </MenuItem>
+                <MenuItem Header="Edycja">
+                    <MenuItem Header="Utwórz item" Command="{Binding AddNewItemCommand}"/>
+                    <MenuItem Header="Duplikuj item" Command="{Binding DuplicateSelectedCommand}"/>
+                    <MenuItem Header="Przeładuj item" Command="{Binding ReloadSelectedCommand}"/>
+                    <MenuItem Header="Utwórz brakujące itemy" Command="{Binding CreateMissingItemsCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="Znajdź item" Click="FindItem_Click"/>
+                </MenuItem>
+                <MenuItem Header="Widok">
+                    <MenuItem Header="Pokaż tylko niezgodne" ToggleType="CheckBox" IsChecked="{Binding ShowOnlyMismatchedItems}"/>
+                    <MenuItem Header="Pokaż wycofane itemy" ToggleType="CheckBox" IsChecked="{Binding ShowDeprecatedItems}"/>
+                    <Separator/>
+                    <MenuItem Header="Odśwież listę itemów" Command="{Binding RefreshItemsCommand}"/>
+                </MenuItem>
+                <MenuItem Header="Narzędzia">
+                    <MenuItem Header="Przeładuj atrybuty itemów" Command="{Binding ReloadAllItemsCommand}"/>
+                    <MenuItem Header="Porównaj pliki OTB…" Click="CompareOtb_Click"/>
+                    <MenuItem Header="Aktualizuj wersję OTB…" Click="UpdateVersion_Click"/>
+                </MenuItem>
+                <MenuItem Header="Pomoc">
+                    <MenuItem Header="O Old Item Editor" Click="About_Click"/>
+                </MenuItem>
+            </Menu>
+        </Border>
+
+        <Border Grid.Row="1" Classes="app-commandbar" Padding="10,8">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,12,Auto,*,Auto" ColumnSpacing="6">
+                <Button Classes="old-toolbar" Content="＋ Nowy" Command="{Binding NewDocumentCommand}" ToolTip.Tip="Utwórz nowy items.otb dla wybranego profilu."/>
+                <Button Grid.Column="1" Classes="old-toolbar" Content="Otwórz OTB" Click="OpenOtb_Click"/>
+                <Button Grid.Column="2" Classes="old-toolbar" Content="Zapisz" Command="{Binding SaveCommand}" IsEnabled="{Binding HasDocument}"/>
+                <Button Grid.Column="3" Classes="old-toolbar" Content="Zapisz jako" Click="SaveAsOtb_Click" IsEnabled="{Binding HasDocument}"/>
+                <Button Grid.Column="4" Classes="old-toolbar" Content="Klient DAT+SPR" Click="OpenClientFolder_Click"/>
+                <Button Grid.Column="5" Classes="old-toolbar" Content="Porównaj OTB" Click="CompareOtb_Click" IsEnabled="{Binding HasDocument}"/>
+                <ComboBox Grid.Column="7" Width="210" ItemsSource="{Binding Protocols}" SelectedItem="{Binding SelectedProtocol}" ToolTip.Tip="Profil używany przy tworzeniu nowego OTB."/>
+                <StackPanel Grid.Column="8" Margin="8,0" VerticalAlignment="Center" Spacing="1">
+                    <TextBlock Text="{Binding DocumentSummary}" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding ClientSummary}" Classes="muted" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <Border Grid.Column="9" Background="#312315" BorderBrush="#B45309" BorderThickness="1" CornerRadius="6" Padding="9,5" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DirtyLabel}" Foreground="#FBBF24" FontSize="11"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="330,*" MinHeight="0">
+            <Border Grid.Column="0" Background="#08101D" BorderBrush="#1E2A3D" BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
+                    <StackPanel Margin="10,10,10,6" Spacing="7">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                            <TextBox x:Name="ItemSearchBox" Text="{Binding FilterText}" PlaceholderText="Szukaj SID, CID, nazwy albo flagi…"/>
+                            <Button Grid.Column="1" Content="×" Command="{Binding ClearFilterCommand}" Width="34" Padding="0" ToolTip.Tip="Wyczyść filtr"/>
+                        </Grid>
+                        <WrapPanel ItemSpacing="10">
+                            <CheckBox Content="Tylko niezgodne" IsChecked="{Binding ShowOnlyMismatchedItems}"/>
+                            <CheckBox Content="Wycofane" IsChecked="{Binding ShowDeprecatedItems}"/>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="10,2,10,6" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Itemy" Classes="section-title"/>
+                        <TextBlock Grid.Column="1" Text="{Binding VisibleItemsText}" Classes="muted" FontSize="10.5"/>
+                    </Grid>
+
+                    <ListBox Grid.Row="2" Margin="6,0" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="7"/>
+                                <Setter Property="Margin" Value="0,1"/>
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:OldItemRow">
+                                <Grid ColumnDefinitions="46,58,*" ColumnSpacing="8" MinHeight="44">
+                                    <Border Width="42" Height="42" Background="#050911" BorderBrush="#263650" BorderThickness="1" CornerRadius="5">
+                                        <Image Source="{Binding Thumbnail}" Width="38" Height="38" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding ServerId}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding ClientId, StringFormat='CID {0}'}" Classes="muted" FontSize="10"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="{Binding FlagsSummary}" Classes="muted" FontSize="9.5" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding MatchLabel}" Foreground="#F59E0B" FontSize="9.5" Margin="6,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Grid Grid.Row="3" Margin="10,7,10,10" ColumnDefinitions="*,*,*,*" ColumnSpacing="5">
+                        <Button Content="＋" Command="{Binding AddNewItemCommand}" ToolTip.Tip="Utwórz item"/>
+                        <Button Grid.Column="1" Content="⧉" Command="{Binding DuplicateSelectedCommand}" ToolTip.Tip="Duplikuj item"/>
+                        <Button Grid.Column="2" Content="↻" Command="{Binding ReloadSelectedCommand}" ToolTip.Tip="Przeładuj item"/>
+                        <Button Grid.Column="3" Content="⌕" Command="{Binding FindCandidatesCommand}" ToolTip.Tip="Znajdź kandydatów sprite"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="12" Spacing="10" MaxWidth="1220" HorizontalAlignment="Stretch">
+                    <Grid ColumnDefinitions="360,*" ColumnSpacing="10">
+                        <Border Classes="old-section">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Appearance" Classes="section-title"/>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Text="Current" Classes="old-label" HorizontalAlignment="Center"/>
+                                        <Border Height="118" Background="#050911" BorderBrush="#2A3B55" BorderThickness="1" CornerRadius="6">
+                                            <Image Source="{Binding CurrentPreview}" Width="104" Height="104" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="5">
+                                        <TextBlock Text="Previous" Classes="old-label" HorizontalAlignment="Center"/>
+                                        <Border Height="118" Background="#050911" BorderBrush="#2A3B55" BorderThickness="1" CornerRadius="6">
+                                            <Image Source="{Binding PreviousPreview}" Width="104" Height="104" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{Binding ComparisonText}" TextWrapping="Wrap" Foreground="#F59E0B" FontSize="10.5" MaxHeight="56"/>
+                                <Button Content="Candidates" Command="{Binding FindCandidatesCommand}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Classes="old-section">
+                            <StackPanel Spacing="9">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBlock Text="Attributes" Classes="section-title"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SelectedServerIdText, StringFormat='Server ID: {0}'}" FontWeight="SemiBold" Foreground="#7DD3FC"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="110,*,110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="7">
+                                    <TextBlock Text="Client ID:" Classes="old-label"/>
+                                    <NumericUpDown Grid.Column="1" Value="{Binding SelectedClientId}" Minimum="100" Maximum="65535"/>
+                                    <TextBlock Grid.Column="2" Text="Type:" Classes="old-label"/>
+                                    <ComboBox Grid.Column="3" ItemsSource="{Binding TypeLabels}" SelectedIndex="{Binding SelectedTypeIndex}"/>
+
+                                    <TextBlock Grid.Row="1" Text="Name:" Classes="old-label"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SelectedName}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Stack Order:" Classes="old-label"/>
+                                    <ComboBox Grid.Row="1" Grid.Column="3" ItemsSource="{Binding StackOrderLabels}" SelectedIndex="{Binding SelectedStackOrderIndex}"/>
+
+                                    <TextBlock Grid.Row="2" Text="Ware ID:" Classes="old-label"/>
+                                    <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding SelectedTradeAs}" Minimum="0" Maximum="65535"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Text="Ground Speed:" Classes="old-label"/>
+                                    <NumericUpDown Grid.Row="2" Grid.Column="3" Value="{Binding SelectedGroundSpeed}" Minimum="0" Maximum="65535"/>
+
+                                    <TextBlock Grid.Row="3" Text="Light Level:" Classes="old-label"/>
+                                    <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding SelectedLightLevel}" Minimum="0" Maximum="65535"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="2" Text="Light Color:" Classes="old-label"/>
+                                    <NumericUpDown Grid.Row="3" Grid.Column="3" Value="{Binding SelectedLightColor}" Minimum="0" Maximum="65535"/>
+
+                                    <TextBlock Grid.Row="4" Text="Minimap Color:" Classes="old-label"/>
+                                    <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding SelectedMinimapColor}" Minimum="0" Maximum="65535"/>
+                                    <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="Read / Write Length:" Classes="old-label"/>
+                                        <NumericUpDown Width="92" Value="{Binding SelectedMaxReadWriteChars}" Minimum="0" Maximum="65535"/>
+                                        <TextBlock Text="Read Length:" Classes="old-label"/>
+                                        <NumericUpDown Width="92" Value="{Binding SelectedMaxReadChars}" Minimum="0" Maximum="65535"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Button Content="Apply item in memory" Command="{Binding ApplySelectedCommand}" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Classes="old-section">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Flags" Classes="section-title"/>
+                            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="18">
+                                <StackPanel>
+                                    <CheckBox Classes="old-flag" Content="Unpassable" IsChecked="{Binding Unpassable}"/>
+                                    <CheckBox Classes="old-flag" Content="Movable" IsChecked="{Binding Movable}"/>
+                                    <CheckBox Classes="old-flag" Content="Block Missiles" IsChecked="{Binding BlockMissiles}"/>
+                                    <CheckBox Classes="old-flag" Content="Block Pathfinder" IsChecked="{Binding BlockPathfinder}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <CheckBox Classes="old-flag" Content="Force Use" IsChecked="{Binding ForceUse}"/>
+                                    <CheckBox Classes="old-flag" Content="Multi Use" IsChecked="{Binding MultiUse}"/>
+                                    <CheckBox Classes="old-flag" Content="Pickupable" IsChecked="{Binding Pickupable}"/>
+                                    <CheckBox Classes="old-flag" Content="Stackable" IsChecked="{Binding Stackable}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <CheckBox Classes="old-flag" Content="Readable" IsChecked="{Binding Readable}"/>
+                                    <CheckBox Classes="old-flag" Content="Rotatable" IsChecked="{Binding Rotatable}"/>
+                                    <CheckBox Classes="old-flag" Content="Hangable" IsChecked="{Binding Hangable}"/>
+                                    <CheckBox Classes="old-flag" Content="Has Elevation" IsChecked="{Binding HasElevation}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="3">
+                                    <CheckBox Classes="old-flag" Content="Hook South" IsChecked="{Binding HookSouth}"/>
+                                    <CheckBox Classes="old-flag" Content="Hook East" IsChecked="{Binding HookEast}"/>
+                                    <CheckBox Classes="old-flag" Content="Ignore Look" IsChecked="{Binding IgnoreLook}"/>
+                                    <CheckBox Classes="old-flag" Content="Full Ground" IsChecked="{Binding FullGround}"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Border Classes="old-section">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Candidates" Classes="section-title"/>
+                                <ListBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" Height="122">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:OldItemCandidate">
+                                            <Grid ColumnDefinitions="40,*" ColumnSpacing="8" Margin="3">
+                                                <Image Source="{Binding Preview}" Width="36" Height="36" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <Button Content="Assign selected candidate" Command="{Binding AssignCandidateCommand}" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Classes="old-section">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Update OTB Version" Classes="section-title"/>
+                                <TextBlock Text="Wskaż folder nowego klienta. Aktualizacja zachowuje poprzedni podgląd i dopasowuje itemy po sprite hash." TextWrapping="Wrap" Classes="muted" FontSize="10.5"/>
+                                <CheckBox Content="Reassign unmatched sprites" IsChecked="{Binding UpdateReassignSprites}"/>
+                                <CheckBox Content="Reload item attributes" IsChecked="{Binding UpdateReloadAttributes}"/>
+                                <CheckBox Content="Create new items" IsChecked="{Binding UpdateCreateNewItems}"/>
+                                <Button Content="Update OTB Version…" Click="UpdateVersion_Click" HorizontalAlignment="Right" IsEnabled="{Binding HasDocument}"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Classes="old-section">
+                        <StackPanel Spacing="7">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Compare OTB Files / Output" Classes="section-title"/>
+                                <Button Grid.Column="1" Content="Compare OTB…" Click="CompareOtb_Click"/>
+                            </Grid>
+                            <TextBox Text="{Binding CompareResultText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" Height="120" FontFamily="Consolas"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="3" Background="#0B1120" BorderBrush="#1E2A3D" BorderThickness="0,1,0,0" Padding="10,6">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <TextBlock Text="{Binding StatusText}" FontSize="10.5" Foreground="#8EA2BD" TextTrimming="CharacterEllipsis"/>
+                <ProgressBar Grid.Column="1" Width="150" Height="5" IsIndeterminate="True" IsVisible="{Binding IsBusy}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

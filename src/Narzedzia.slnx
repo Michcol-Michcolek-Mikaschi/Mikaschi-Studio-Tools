@@ -1,0 +1,42 @@
+<Solution>
+  <Folder Name="/Modules/" />
+  <Folder Name="/Modules/AssetsEditor/">
+    <Project Path="Modules/AssetsEditor/Modules.AssetsEditor.csproj" />
+  </Folder>
+  <Folder Name="/Modules/LapisItemEditor/">
+    <Project Path="Modules/LapisItemEditor/Modules.LapisItemEditor.csproj" />
+  </Folder>
+  <Folder Name="/Modules/MapEditor/">
+    <Project Path="Modules/MapEditor/Modules.MapEditor.csproj" />
+  </Folder>
+  <Folder Name="/Modules/OldItemEditor/">
+    <Project Path="Modules/OldItemEditor/Modules.OldItemEditor.csproj" />
+  </Folder>
+  <Folder Name="/Modules/ObjectBuilder/">
+    <Project Path="Modules/ObjectBuilder/Modules.ObjectBuilder.csproj" />
+  </Folder>
+  <Folder Name="/Modules/SpiderConverter/">
+    <Project Path="Modules/SpiderConverter/Modules.SpiderConverter.csproj" />
+  </Folder>
+  <Folder Name="/Modules/SpriteResizer/">
+    <Project Path="Modules/SpriteResizer/Modules.SpriteResizer.csproj" />
+  </Folder>
+  <Folder Name="/Modules/SpriteSheetCutter/">
+    <Project Path="Modules/SpriteSheetCutter/Modules.SpriteSheetCutter.csproj" />
+  </Folder>
+  <Folder Name="/Modules/SpriteGenerator/">
+    <Project Path="Modules/SpriteGenerator/Modules.SpriteGenerator.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/Modules.AssetsEditor.Tests/Modules.AssetsEditor.Tests.csproj" />
+    <Project Path="Tests/Modules.LapisItemEditor.Tests/Modules.LapisItemEditor.Tests.csproj" />
+    <Project Path="Tests/Modules.MapEditor.Tests/Modules.MapEditor.Tests.csproj" />
+    <Project Path="Tests/Modules.OldItemEditor.Tests/Modules.OldItemEditor.Tests.csproj" />
+    <Project Path="Tests/Modules.ObjectBuilder.Tests/Modules.ObjectBuilder.Tests.csproj" />
+    <Project Path="Tests/Modules.SpriteTools.Tests/Modules.SpriteTools.Tests.csproj" />
+    <Project Path="Tests/Narzedzia.Core.Tests/Narzedzia.Core.Tests.csproj" />
+  </Folder>
+  <Project Path="Narzedzia.Contracts/Narzedzia.Contracts.csproj" />
+  <Project Path="Narzedzia.Core/Narzedzia.Core.csproj" />
+  <Project Path="NarzedziaHost/NarzedziaHost.csproj" />
+</Solution>

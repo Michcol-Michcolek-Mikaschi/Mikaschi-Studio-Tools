@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Narzedzia.Contracts\Narzedzia.Contracts.csproj" />
+    <ProjectReference Include="..\..\Narzedzia.Core\Narzedzia.Core.csproj" />
+    <ProjectReference Include="..\ObjectBuilder\Modules.ObjectBuilder.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,180 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modules.SpriteGenerator.ViewModels"
+             x:Class="Modules.SpriteGenerator.Views.SpriteGeneratorView"
+             x:DataType="vm:SpriteGeneratorViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.section">
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,8,0,2"/>
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#7C3AED"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="12,6"/>
+        </Style>
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="#E5EDF8"/>
+            <Setter Property="Padding" Value="8,4"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto" Background="#050911">
+
+        <!-- Top: header + identyfikatory -->
+        <Border Grid.Row="0" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="0,0,0,1" Padding="14,10">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="🪄 Generator Sprite'ów AI (ComfyUI)" FontSize="16" FontWeight="SemiBold" Foreground="#E5EDF8"/>
+                    <TextBlock Text="Outfit / Item / Effect / Missile — z presetami i eksportem do PNG sheet"
+                               Foreground="#94A3B8" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <TextBox Text="{Binding ServerUrl}" Width="200" PlaceholderText="http://127.0.0.1:8188" FontSize="11"/>
+                    <Button Classes="secondary" Content="🔌 Test ComfyUI" Command="{Binding TestServerCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main grid: [parametry | podgląd klatek | sheet preview] -->
+        <Grid Grid.Row="1" ColumnDefinitions="340,*,360">
+
+            <!-- LEWA: parametry -->
+            <ScrollViewer Grid.Column="0" Background="#0B1220" Padding="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="KATEGORIA" Classes="section"/>
+                    <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SpriteCategoryPreset">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <TextBlock Text="PROMPT" Classes="section"/>
+                    <TextBox Text="{Binding Prompt}" AcceptsReturn="True" Height="80"
+                             PlaceholderText="Opisz sprite (np. 'fire wizard with red robe, holding staff')"
+                             TextWrapping="Wrap"/>
+
+                    <TextBlock Text="NEGATIVE PROMPT" Classes="section"/>
+                    <TextBox Text="{Binding NegativePrompt}" AcceptsReturn="True" Height="48"
+                             TextWrapping="Wrap" FontSize="11"/>
+
+                    <TextBlock Text="MODEL (CHECKPOINT)" Classes="section"/>
+                    <TextBox Text="{Binding ModelName}" PlaceholderText="sd_xl_base_1.0.safetensors"/>
+
+                    <TextBlock Text="ROZMIAR I KLATKI" Classes="section"/>
+                    <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="4">
+                        <StackPanel>
+                            <TextBlock Text="Width" Classes="label"/>
+                            <NumericUpDown Value="{Binding Width}" Minimum="32" Maximum="2048" Increment="32"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Height" Classes="label"/>
+                            <NumericUpDown Value="{Binding Height}" Minimum="32" Maximum="2048" Increment="32"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Klatek" Classes="label"/>
+                            <NumericUpDown Value="{Binding FrameCount}" Minimum="1" Maximum="64"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1">
+                            <TextBlock Text="Tile out" Classes="label" ToolTip.Tip="Docelowy rozmiar tile w sprite sheet (pixel-art down-sample)"/>
+                            <NumericUpDown Value="{Binding TargetTileSize}" Minimum="16" Maximum="256" Increment="8"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2">
+                            <TextBlock Text="Seed (0=losowy)" Classes="label"/>
+                            <NumericUpDown Value="{Binding Seed}" Minimum="0" Maximum="9999999999"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="SAMPLING" Classes="section"/>
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="4">
+                        <StackPanel>
+                            <TextBlock Text="Steps" Classes="label"/>
+                            <NumericUpDown Value="{Binding Steps}" Minimum="4" Maximum="150"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="CFG Scale" Classes="label"/>
+                            <NumericUpDown Value="{Binding CfgScale}" Minimum="1" Maximum="20" Increment="0.5"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1">
+                            <TextBlock Text="Sampler" Classes="label"/>
+                            <ComboBox ItemsSource="{Binding Samplers}" SelectedItem="{Binding Sampler}" HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1">
+                            <TextBlock Text="Scheduler" Classes="label"/>
+                            <ComboBox ItemsSource="{Binding Schedulers}" SelectedItem="{Binding Scheduler}" HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Button Classes="primary" Margin="0,12,0,0" HorizontalAlignment="Stretch"
+                            Content="✨ Generuj sprite sheet"
+                            Command="{Binding GenerateCommand}"
+                            IsEnabled="{Binding !IsGenerating}"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ŚRODEK: klatki -->
+            <Border Grid.Column="1" Background="#020617" BorderBrush="#1E293B" BorderThickness="1,0">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Top" Text="WYGENEROWANE KLATKI" Classes="section"
+                               HorizontalAlignment="Center" Margin="0,8,0,4"/>
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding FramePreviews}" Margin="10">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#0F172A" Margin="4" Padding="4"
+                                            BorderBrush="#334155" BorderThickness="1" CornerRadius="3">
+                                        <Image Source="{Binding}" Width="128" Height="128" Stretch="Uniform"
+                                               RenderOptions.BitmapInterpolationMode="None"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- PRAWA: sheet preview + eksport -->
+            <Border Grid.Column="2" Background="#0B1220" Padding="12">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Top" Text="SPRITE SHEET (PODGLĄD)" Classes="section"
+                               HorizontalAlignment="Center"/>
+                    <Button DockPanel.Dock="Bottom" Classes="primary" HorizontalAlignment="Stretch" Margin="0,8,0,0"
+                            Content="💾 Eksportuj PNG sheet" Click="ExportSheet_Click"
+                            IsEnabled="{Binding HasSheet}"/>
+                    <Border Background="#020617" BorderBrush="#334155" BorderThickness="1" Padding="6">
+                        <Image Source="{Binding SheetPreview}" Stretch="Uniform"
+                               RenderOptions.BitmapInterpolationMode="None"/>
+                    </Border>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Status bar -->
+        <Border Grid.Row="2" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="0,1,0,0" Padding="12,4">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Text="{Binding ServerStatus}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding GenerateStatus}" Foreground="#FBBF24" FontSize="11"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <ProgressBar Grid.Column="2" IsIndeterminate="{Binding IsGenerating}" Width="120" Height="6" VerticalAlignment="Center"
+                             IsVisible="{Binding IsGenerating}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

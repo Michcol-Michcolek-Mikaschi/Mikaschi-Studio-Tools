@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="SixLabors.ImageSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Narzedzia.Contracts\Narzedzia.Contracts.csproj" />
+    <ProjectReference Include="..\..\Narzedzia.Core\Narzedzia.Core.csproj" />
+    <ProjectReference Include="..\ObjectBuilder\Modules.ObjectBuilder.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Modules.MapEditor.Tests" />
+  </ItemGroup>
+
+  <!--
+    Samodzielny katalog zgodności RME: clients.xml, items.otb/items.xml oraz
+    definicje materiałów, brushy i stworzeń dla wspieranych protokołów.
+    Dane są częścią tego repozytorium i nie zależą od instalacji silnika ani RME.
+  -->
+  <ItemGroup>
+    <Content Include="..\..\..\rme-data\**\*"
+             Link="rme-data\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

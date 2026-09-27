@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<creatures>
+	<!-- Custom creatures for Naruto server -->
+	<creature name="Training Machine" type="monster" looktype="211"/>
+	<creature name="Yuki" type="npc" looktype="2377"/>
+	<creature name="Pixel Guild Wars" type="npc" looktype="139"/>
+	<creature name="Akira the Jeweler" type="npc" looktype="2377"/>
+	<creature name="Daichi Armorsmith" type="npc" looktype="2376"/>
+	<creature name="Goro Ironfist" type="npc" looktype="2356"/>
+	<creature name="Hana Sandal Weaver" type="npc" looktype="2343"/>
+	<creature name="Kaito the Shuriken Master" type="npc" looktype="2342"/>
+	<creature name="Kenji Bladesmith" type="npc" looktype="2336"/>
+	<creature name="Maki the Band Keeper" type="npc" looktype="2329"/>
+	<creature name="Mei the Amulet Keeper" type="npc" looktype="2314"/>
+	<creature name="Ren the Tailor" type="npc" looktype="2314"/>
+	<creature name="Sora Maskmaker" type="npc" looktype="2329"/>
+	<creature name="Shizune the Potion Brewer" type="npc" looktype="2329"/>
+	<creature name="Kenta the Backpack Merchant" type="npc" looktype="2329"/>
+	<creature name="Hokage" type="npc" looktype="2104"/>
+</creatures>

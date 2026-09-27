@@ -1,0 +1,105 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Modules.AssetsEditor.ViewModels"
+        x:Class="Modules.AssetsEditor.Views.SpriteSheetEditorWindow"
+        x:DataType="vm:SpriteSheetEditorViewModel"
+        Title="Manager arkuszy sprite'ów"
+        Width="1360"
+        Height="820"
+        MinWidth="1040"
+        MinHeight="620"
+        Background="#0B1020">
+
+    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,360" Margin="12" RowSpacing="10" ColumnSpacing="12">
+        <Border Grid.Row="0" Grid.ColumnSpan="2" BorderBrush="#2563EB" BorderThickness="1" Padding="8" Background="#111827" CornerRadius="6">
+            <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis"/>
+        </Border>
+
+        <Border Grid.Row="1" Grid.Column="0" BorderBrush="#2563EB" BorderThickness="1" Padding="10" Background="#111827" CornerRadius="6">
+            <Grid RowDefinitions="Auto,*">
+                <TextBlock Text="Podgląd bieżącego arkusza" FontWeight="Bold" Margin="0,0,0,8"/>
+                <Border Grid.Row="1" Background="#020617" BorderBrush="#334155" BorderThickness="1" CornerRadius="4">
+                    <Image Source="{Binding SheetPreview}"
+                           Stretch="Uniform"
+                           RenderOptions.BitmapInterpolationMode="None"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Grid.Column="1" BorderBrush="#2563EB" BorderThickness="1" Padding="10" Background="#111827" CornerRadius="6">
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+                <TextBlock Text="Lista arkuszy sprite'ów" FontWeight="Bold"/>
+
+                <Border Grid.Row="1" BorderBrush="#334155" BorderThickness="1" Padding="8" Background="#0F172A" CornerRadius="4">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Szukaj po ID sprite'a" HorizontalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                            <NumericUpDown Value="{Binding SearchSpriteId}" Minimum="0" Maximum="999999999" Width="110"/>
+                            <Button Content="Szukaj" Command="{Binding SearchSheetCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <ListBox Grid.Row="2"
+                         ItemsSource="{Binding Sheets}"
+                         SelectedItem="{Binding SelectedSheetItem}"
+                         Background="#020617">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SpriteSheetListItem">
+                            <TextBlock Text="{Binding DisplayName}"
+                                       TextWrapping="Wrap"
+                                       Margin="4"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Grid.ColumnSpan="2" BorderBrush="#2563EB" BorderThickness="1" Padding="10" Background="#111827" CornerRadius="6">
+            <TabControl>
+                <TabItem Header="Open Sprites">
+                    <DockPanel LastChildFill="True" Margin="0,8,0,0">
+                        <Button DockPanel.Dock="Right" Content="Zapisz do assets" Command="{Binding SaveSheetCommand}" Margin="8,0,0,0"/>
+                        <WrapPanel Orientation="Horizontal" ItemSpacing="8">
+                            <Button Content="Importuj" Command="{Binding ImportImageCommand}"/>
+                            <Button Content="Eksportuj" Command="{Binding ExportSheetCommand}"/>
+                            <Button Content="Usuń kafel" Command="{Binding ClearTileCommand}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Start kafla" VerticalAlignment="Center"/>
+                                <NumericUpDown Value="{Binding ImportStartTile}" Minimum="0" Maximum="9999" Width="90"/>
+                            </StackPanel>
+                            <TextBlock Text="Przeciągnij obraz na okno, aby szybko zaimportować" VerticalAlignment="Center" Foreground="#94A3B8"/>
+                        </WrapPanel>
+                    </DockPanel>
+                </TabItem>
+
+                <TabItem Header="Slicer Sprites">
+                    <DockPanel LastChildFill="True" Margin="0,8,0,0">
+                        <Button DockPanel.Dock="Right" Content="Nowy arkusz" Command="{Binding CreateSheetCommand}" Margin="8,0,0,0"/>
+                        <WrapPanel Orientation="Horizontal" ItemSpacing="10">
+                            <TextBlock Text="Nowy arkusz" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Rozmiar" VerticalAlignment="Center"/>
+                                <ComboBox ItemsSource="{Binding NewSheetLayouts}"
+                                          SelectedItem="{Binding SelectedNewSheetLayout}"
+                                          DisplayMemberBinding="{Binding DisplayName}"
+                                          Width="180"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Pierwsze ID" VerticalAlignment="Center"/>
+                                <NumericUpDown Value="{Binding NewSheetFirstSpriteId}" Minimum="1" Maximum="999999999" Width="120"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Typ" VerticalAlignment="Center"/>
+                                <NumericUpDown Value="{Binding NewSheetSpriteType}" Minimum="0" Maximum="35" Width="80"/>
+                            </StackPanel>
+                            <TextBlock Text="Tworzy nowy arkusz, do którego możesz od razu importować i ciąć sprite'y."
+                                       VerticalAlignment="Center"
+                                       Foreground="#94A3B8"/>
+                        </WrapPanel>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
+        </Border>
+    </Grid>
+</Window>

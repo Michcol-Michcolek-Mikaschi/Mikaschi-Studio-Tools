@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <!-- Google.Protobuf: runtime dla klas wygenerowanych z appearances.proto -->
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="SharpCompress" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Narzedzia.Contracts\Narzedzia.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- Appearances.cs jest wygenerowany z Protos/appearances.proto i zaczytywany ze stałej lokalizacji.
+       Grpc.Tools zostało usunięte, bo protoc.exe nie obsługuje ścieżek z polskimi znakami w TMP. -->
+
+</Project>

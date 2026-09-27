@@ -1,0 +1,1052 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modules.MapEditor.ViewModels"
+             xmlns:views="using:Modules.MapEditor.Views"
+             x:Class="Modules.MapEditor.Views.MapEditorView"
+             x:DataType="vm:MapEditorViewModel"
+             Focusable="True"
+             KeyDown="MapEditor_KeyDown">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="RmePaletteItemTemplate" x:DataType="vm:MapPaletteItem">
+            <Border Classes="palette-entry" Classes.selected="{Binding IsSelected}"
+                    Padding="4" Margin="0,1" Background="#111827" CornerRadius="3"
+                    PointerPressed="Palette_PointerPressed" Cursor="Hand"
+                    ToolTip.Tip="{Binding Label}">
+                <Grid ColumnDefinitions="40,*">
+                    <Image Source="{Binding Thumbnail}" Width="32" Height="32"
+                           Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Label}"
+                               Foreground="#CBD5E1" FontSize="11"
+                               VerticalAlignment="Center" TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="RmePaletteTileTemplate" x:DataType="vm:MapPaletteItem">
+            <Border Classes="palette-entry palette-tile" Classes.selected="{Binding IsSelected}"
+                    Width="48" Height="48" Margin="1" Padding="3" CornerRadius="2"
+                    PointerPressed="Palette_PointerPressed" Cursor="Hand"
+                    ToolTip.Tip="{Binding Label}">
+                <Image Source="{Binding Thumbnail}" Width="40" Height="40"
+                       Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="Button.tool">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="#E5EDF8"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#1E40AF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="10,4"/>
+        </Style>
+        <Style Selector="Button.success">
+            <Setter Property="Background" Value="#15803D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="10,4"/>
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style Selector="Border.palette-entry">
+            <Setter Property="Background" Value="#111827"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Border.palette-entry:pointerover">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="BorderBrush" Value="#60A5FA"/>
+        </Style>
+        <Style Selector="Border.palette-entry.selected">
+            <Setter Property="Background" Value="#1E3A5F"/>
+            <Setter Property="BorderBrush" Value="#38BDF8"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Background="#050911">
+
+        <!-- ROW 0: Główny toolbar (file actions, grupy oddzielone separatorami) -->
+        <Border Grid.Row="0" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="0,0,0,1" Padding="10,6"
+                IsEnabled="{Binding !IsLoading}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <!-- Grupa: Mapa -->
+                <Border Background="#0B1220" CornerRadius="4" Padding="6,4">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="MAPA" Classes="section" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Button Classes="tool" Content="＋ Nowa" Command="{Binding NewMapCommand}"
+                                ToolTip.Tip="Utwórz pustą mapę z wartości podanych w zakładce Map"/>
+                        <Button Classes="tool" Content="📂 Otwórz" Click="OpenOtbm_Click"
+                                IsEnabled="{Binding !IsLoading}"
+                                ToolTip.Tip="Wybierz plik mapy .otbm"/>
+                        <Button Classes="tool" Content="💾 Zapisz" Command="{Binding SaveMapCommand}"
+                                IsEnabled="{Binding CanSave}"
+                                ToolTip.Tip="Zapisz mapę pod aktualną ścieżką"/>
+                        <Button Classes="tool" Content="💾 Zapisz jako…" Click="SaveAsOtbm_Click"
+                                IsEnabled="{Binding CanSave}"
+                                ToolTip.Tip="Zapisz mapę pod nową ścieżką"/>
+                        <Button Classes="tool" Content="Importuj…" Click="ImportOtbm_Click"
+                                IsEnabled="{Binding CanSave}"
+                                ToolTip.Tip="Scal inną mapę OTBM z offsetem i kontrolą konfliktów"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Historia zmian zgodna z podstawowym workflow RME -->
+                <Border Background="#0B1220" CornerRadius="4" Padding="6,4">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="EDYCJA" Classes="section" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Button Classes="tool" Content="↶ Cofnij" Command="{Binding UndoCommand}"
+                                ToolTip.Tip="Cofnij ostatnią zmianę (Ctrl+Z)"/>
+                        <Button Classes="tool" Content="↷ Ponów" Command="{Binding RedoCommand}"
+                                ToolTip.Tip="Ponów zmianę (Ctrl+Y)"/>
+                        <CheckBox Content="Zaznacz" IsChecked="{Binding SelectionMode}"
+                                  VerticalAlignment="Center" ToolTip.Tip="Zaznacz prostokątny obszar mapy"/>
+                        <ComboBox ItemsSource="{Binding SelectionFloorModes}" SelectedItem="{Binding SelectionFloorMode}"
+                                  Width="112" ToolTip.Tip="Zakres pięter zaznaczenia jak w RME"/>
+                        <CheckBox Content="Kompensuj" IsChecked="{Binding CompensateSelection}"
+                                  VerticalAlignment="Center"
+                                  ToolTip.Tip="Compensate Selection — wyrównuje zaznaczenie między piętrami izometrycznymi"/>
+                        <Button Classes="tool" Content="Kopiuj" Command="{Binding CopySelectionCommand}"
+                                ToolTip.Tip="Kopiuj zaznaczenie (Ctrl+C)"/>
+                        <Button Classes="tool" Content="Wytnij" Command="{Binding CutSelectionCommand}"
+                                ToolTip.Tip="Wytnij zaznaczenie (Ctrl+X)"/>
+                        <Button Classes="tool" Content="Wklej" Command="{Binding PasteSelectionCommand}"
+                                ToolTip.Tip="Wklej przy kursorze (Ctrl+V)"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Grupa: Zasoby -->
+                <Border Background="#0B1220" CornerRadius="4" Padding="6,4">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="KLIENT / ASSETS" Classes="section" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Button Classes="tool" Content="📁 Folder…" Click="OpenAssets_Click"
+                                IsEnabled="{Binding !IsLoading}"
+                                ToolTip.Tip="Folder Tibia 12+ (catalog-content.json + appearances.dat + sprite atlasy)"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Główny CTA -->
+                <Button Classes="primary" Content="⚡ Wczytaj wszystko"
+                        Command="{Binding LoadAllCommand}"
+                        IsEnabled="{Binding !IsLoading}"
+                        ToolTip.Tip="Wczytaj OTBM + assets równolegle"/>
+
+                <!-- Spacer + identyfikatory wczytanych zasobów -->
+                <Border Width="1" Background="#1E293B" Margin="4,0"/>
+                <StackPanel VerticalAlignment="Center" Spacing="1">
+                    <TextBlock Classes="muted">
+                        <Run Text="🗺 "/><Run Text="{Binding MapFileName}" FontWeight="SemiBold" Foreground="#CBD5E1"/>
+                    </TextBlock>
+                    <TextBlock Classes="muted">
+                        <Run Text="🎨 "/><Run Text="{Binding AssetsFolderName}" FontWeight="SemiBold" Foreground="#CBD5E1"/>
+                    </TextBlock>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- ROW 1: Pola ścieżek (zwarty pasek) -->
+        <Border Grid.Row="1" Background="#0B1220" BorderBrush="#1E293B" BorderThickness="0,0,0,1" Padding="10,4">
+            <Grid RowDefinitions="Auto,Auto">
+                <Grid ColumnDefinitions="60,*,12,60,*" ColumnSpacing="4"
+                      IsEnabled="{Binding !IsLoading}">
+                    <TextBlock Text=".otbm" Classes="muted" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Text="{Binding MapPath}" FontSize="11"
+                             PlaceholderText="Ścieżka do mapy .otbm" Padding="4,2"/>
+                    <TextBlock Grid.Column="3" Text="assets" Classes="muted" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="4" Text="{Binding AssetsPath}" FontSize="11"
+                             PlaceholderText="Folder z Tibia.dat/.spr albo assets Tibia 12+" Padding="4,2"/>
+                </Grid>
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10" Margin="60,5,0,1"
+                      IsVisible="{Binding IsLoading}">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding LoadStage}" Classes="muted" TextTrimming="CharacterEllipsis"/>
+                        <ProgressBar Minimum="0" Maximum="100" Value="{Binding LoadProgress}"
+                                     IsIndeterminate="{Binding IsLoadProgressIndeterminate}" Height="7"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding LoadProgressLabel}" Foreground="#93C5FD"
+                               FontSize="11" FontWeight="SemiBold" VerticalAlignment="Bottom"/>
+                    <Button Grid.Column="2" Classes="tool" Content="Anuluj"
+                            Command="{Binding CancelLoadCommand}" VerticalAlignment="Center"
+                            ToolTip.Tip="Przerwij wczytywanie bez podmieniania aktualnej mapy i assets"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ROW 2: Main work area (viewport | paleta) -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,5,360" IsEnabled="{Binding !IsLoading}">
+
+            <Border Grid.Column="0" Background="#020617" BorderBrush="#1E293B" BorderThickness="0,0,1,0">
+                <DockPanel LastChildFill="True">
+                    <!-- Floor / pan / zoom -->
+                    <Border DockPanel.Dock="Top" Background="#0F172A"
+                            BorderBrush="#1E293B" BorderThickness="0,0,0,1" Padding="10,6">
+                        <StackPanel Spacing="4">
+                            <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="4" VerticalAlignment="Center">
+                                <!-- Floor -->
+                                <Border Background="#0B1220" CornerRadius="4" Padding="6,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="Z" Classes="section" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                        <Button Classes="tool" Content="▼" Command="{Binding FloorDownCommand}" Padding="6,2"
+                                                ToolTip.Tip="Niżej (Z+1)"/>
+                                        <NumericUpDown Value="{Binding CurrentFloor}" Minimum="0" Maximum="15"
+                                                       Width="46" ShowButtonSpinner="False"
+                                                       ToolTip.Tip="Bezpośredni wybór piętra 0–15"/>
+                                        <Button Classes="tool" Content="▲" Command="{Binding FloorUpCommand}" Padding="6,2"
+                                                ToolTip.Tip="Wyżej (Z−1)"/>
+                                        <TextBlock Foreground="#FBBF24" FontSize="11" VerticalAlignment="Center" Margin="4,0,0,0">
+                                            <Run Text="("/><Run Text="{Binding CurrentFloorTileCount}"/><Run Text=" tile)"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Pozycja + pan -->
+                                <Border Background="#0B1220" CornerRadius="4" Padding="6,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="POZ" Classes="section" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                        <TextBlock VerticalAlignment="Center" Foreground="#E5EDF8" FontFamily="Consolas" FontSize="11">
+                                            <Run Text="("/><Run Text="{Binding ViewX}"/><Run Text=", "/><Run Text="{Binding ViewY}"/><Run Text=")"/>
+                                        </TextBlock>
+                                        <Button Classes="tool" Content="↑" Command="{Binding PanUpCommand}" Padding="4,2"/>
+                                        <Button Classes="tool" Content="↓" Command="{Binding PanDownCommand}" Padding="4,2"/>
+                                        <Button Classes="tool" Content="←" Command="{Binding PanLeftCommand}" Padding="4,2"/>
+                                        <Button Classes="tool" Content="→" Command="{Binding PanRightCommand}" Padding="4,2"/>
+                                        <Button Classes="success" Content="🎯 Centruj" Command="{Binding AutoCenterCommand}"
+                                                ToolTip.Tip="Wyśrodkuj na centroid tile aktualnego floor"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Widok: odpowiedniki najważniejszych przełączników RME -->
+                                <Border Background="#0B1220" CornerRadius="4" Padding="6,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                                        <TextBlock Text="WIDOK" Classes="section" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                        <CheckBox Content="Siatka" IsChecked="{Binding ShowGrid}"/>
+                                        <CheckBox Content="Domy" IsChecked="{Binding ShowHouses}"/>
+                                        <CheckBox Content="Spawny" IsChecked="{Binding ShowSpawns}"/>
+                                        <CheckBox Content="Stworzenia" IsChecked="{Binding ShowCreatures}"/>
+                                        <CheckBox Content="Strefy" IsChecked="{Binding ShowSpecialTiles}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Zoom -->
+                                <Border Background="#0B1220" CornerRadius="4" Padding="6,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="ZOOM" Classes="section" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                        <Button Classes="tool" Content="−" Command="{Binding ZoomOutCommand}" Padding="6,2"/>
+                                        <TextBlock Text="{Binding TileSize}" Foreground="White" FontWeight="Bold"
+                                                   VerticalAlignment="Center" MinWidth="24" TextAlignment="Center"/>
+                                        <TextBlock Text="px" Classes="muted" VerticalAlignment="Center"/>
+                                        <Button Classes="tool" Content="+" Command="{Binding ZoomInCommand}" Padding="6,2"/>
+                                        <Button Classes="tool" Content="1:1" Command="{Binding ZoomNormalCommand}" Padding="6,2"
+                                                ToolTip.Tip="Zoom Normal (Ctrl+0)"/>
+                                        <TextBlock Classes="muted" FontStyle="Italic" Margin="6,0,0,0"
+                                                   Text="kółko = zoom pod kursorem, strzałki/drag = pan"/>
+                                    </StackPanel>
+                                </Border>
+                            </WrapPanel>
+
+                            <TextBlock Text="{Binding FloorBreakdown}" Foreground="#64748B" FontSize="10"
+                                       FontFamily="Consolas"
+                                       ToolTip.Tip="Liczba tile na każdym floor"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Canvas viewport -->
+                    <ScrollViewer x:Name="ViewportHost" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                  PointerWheelChanged="Viewport_PointerWheelChanged"
+                                  PointerPressed="Viewport_PointerPressed"
+                                  PointerMoved="Viewport_PointerMoved"
+                                  PointerCaptureLost="Viewport_PointerCaptureLost"
+                                  PointerReleased="Viewport_PointerReleased">
+                        <ScrollViewer.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Właściwości pola…" Click="ContextTileProperties_Click"/>
+                                <MenuItem Header="Znajdź górny item w palecie" Click="ContextFindItem_Click"/>
+                                <MenuItem Header="Znajdź potwora / NPC w palecie" Click="ContextFindCreature_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Zaznacz tylko to pole" Click="ContextSelectTile_Click"/>
+                                <MenuItem Header="Przypisz do wybranego domu" Click="ContextAssignHouse_Click"/>
+                                <MenuItem Header="Strefy pola">
+                                    <MenuItem Header="Przełącz Protection Zone" Tag="ProtectionZone" Click="ContextToggleZone_Click"/>
+                                    <MenuItem Header="Przełącz No PvP Zone" Tag="NoPvpZone" Click="ContextToggleZone_Click"/>
+                                    <MenuItem Header="Przełącz No Logout Zone" Tag="NoLogoutZone" Click="ContextToggleZone_Click"/>
+                                    <MenuItem Header="Przełącz PvP Zone" Tag="PvpZone" Click="ContextToggleZone_Click"/>
+                                </MenuItem>
+                                <MenuItem Header="Usuń stworzenie z pola" Tag="Creature" Click="ContextRemoveEntity_Click"/>
+                                <MenuItem Header="Usuń centrum spawnu i jego stworzenia" Tag="Spawn" Click="ContextRemoveEntity_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Usuń wierzchni element (Shift+PPM)" Click="ContextEraseTile_Click"/>
+                            </ContextMenu>
+                        </ScrollViewer.ContextMenu>
+                        <Grid Width="{Binding CanvasWidth}" Height="{Binding CanvasHeight}">
+                            <views:MapViewportControl x:Name="MapViewport"
+                                                      Tiles="{Binding VisibleTiles}"
+                                                      Width="{Binding CanvasWidth}"
+                                                      Height="{Binding CanvasHeight}"
+                                                      Background="#020617"
+                                                      RenderMetricsUpdated="Viewport_RenderMetricsUpdated"
+                                                      RenderOptions.BitmapInterpolationMode="None"/>
+                            <views:MapSelectionMovePreviewControl x:Name="SelectionMovePreview"
+                                                                  Width="{Binding CanvasWidth}"
+                                                                  Height="{Binding CanvasHeight}"
+                                                                  RenderOptions.BitmapInterpolationMode="None"/>
+                            <views:MapBrushPreviewControl Tiles="{Binding VisibleBrushPreview}"
+                                                          Width="{Binding CanvasWidth}"
+                                                          Height="{Binding CanvasHeight}"/>
+                        </Grid>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="5" Background="#1E293B"
+                          ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                          Cursor="SizeWestEast"/>
+
+            <!-- Palety i tilesety zachowują strukturę oryginalnego RME. -->
+            <Border Grid.Column="2" Background="#0F172A" Padding="6" MinWidth="310">
+                <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,2,0,5">
+                        <TextBlock Text="PALETA" Classes="section"/>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                            <ComboBox ItemsSource="{Binding PaletteSections}"
+                                      SelectedItem="{Binding SelectedPaletteSection}"
+                                      HorizontalAlignment="Stretch"
+                                      ToolTip.Tip="Rodzaj palety zgodny z menu RME"/>
+                            <Button Grid.Column="1" Classes="primary" Content="Pokaż"
+                                    Click="ShowSelectedPalette_Click"
+                                    ToolTip.Tip="Wróć z panelu zarządzania do wybranej palety"/>
+                        </Grid>
+                        <TextBlock Text="{Binding PaletteGroupLabel}" Classes="section"
+                                   IsVisible="{Binding IsPaletteGroupVisible}" Margin="0,3,0,0"/>
+                        <!--
+                            Nie używamy tutaj współdzielonego ComboBox. Po zmianie rodzaju palety
+                            Semi/Avalonia potrafi ponownie wykorzystać jego kontenery i pokazać
+                            teksty ze starego ItemsSource (np. Terrain wewnątrz House Palette).
+                            Menu jest budowane od zera w code-behind przy każdym otwarciu.
+                        -->
+                        <Button x:Name="PaletteGroupSelector"
+                                Click="PaletteGroupSelector_Click"
+                                IsVisible="{Binding IsPaletteGroupVisible}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="10,0,8,0"
+                                ToolTip.Tip="Tileset lub grupa aktywnej palety">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBlock Text="{Binding SelectedPaletteGroup}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Grid.Column="1" Text="⌄" FontSize="16"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+                        <TextBox Text="{Binding PaletteSearch, UpdateSourceTrigger=PropertyChanged}"
+                                 PlaceholderText="Szukaj nazwy lub Server ID…"
+                                 ToolTip.Tip="Filtruje aktywną paletę i tileset"/>
+                        <TextBlock Text="{Binding MaterialStatus}" Classes="muted"
+                                   TextWrapping="Wrap" MaxHeight="38"
+                                   ToolTip.Tip="{Binding MaterialStatus}"/>
+                        <Grid ColumnDefinitions="Auto,70,*" ColumnSpacing="6">
+                            <TextBlock Text="Wariant" Classes="muted" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="1" Value="{Binding BrushVariation}"
+                                           Minimum="0" Maximum="{Binding BrushVariationMaximum}"
+                                           ShowButtonSpinner="True"/>
+                            <TextBlock Grid.Column="2" Text="{Binding BrushModeLabel}" Classes="muted"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        </Grid>
+                        <CheckBox Content="Automagic borders" IsChecked="{Binding Automagic}"
+                                  ToolTip.Tip="Odtwarza automatyczne obramowania GroundBrush z RME"/>
+                        <Expander Header="Zarządzanie mapą">
+                            <Border Background="#0B1220" BorderBrush="#334155" BorderThickness="1"
+                                    CornerRadius="4" Padding="6">
+                                <WrapPanel ItemSpacing="4" LineSpacing="4">
+                                    <Button Classes="tool" Content="Miasta" Tag="Towns" Click="WorkspacePanel_Click"/>
+                                    <Button Classes="tool" Content="Widok" Tag="View" Click="WorkspacePanel_Click"/>
+                                    <Button Classes="tool" Content="Minimapa" Tag="Minimap" Click="WorkspacePanel_Click"/>
+                                    <Button Classes="tool" Content="Mapa" Tag="Map" Click="WorkspacePanel_Click"/>
+                                    <Button Classes="tool" Content="Import / Szukaj" Tag="ImportSearch" Click="WorkspacePanel_Click"/>
+                                    <Button Classes="tool" Content="Konwersja" Tag="Convert" Click="WorkspacePanel_Click"/>
+                                    <Button Classes="tool" Content="Narzędzia" Tag="Tools" Click="WorkspacePanel_Click"/>
+                                    <Button Classes="tool" Content="Pole" Tag="Tile" Click="WorkspacePanel_Click"/>
+                                </WrapPanel>
+                            </Border>
+                        </Expander>
+                        <Border Background="#111827" BorderBrush="#1E3A5F" BorderThickness="1"
+                                CornerRadius="3" Padding="6,4" Margin="0,2,0,0">
+                            <TextBlock Text="{Binding ActiveWorkspaceLabel}" Foreground="#93C5FD"
+                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        </Border>
+                    </StackPanel>
+                    <Border DockPanel.Dock="Bottom" Background="#0B1220" BorderBrush="#334155"
+                            BorderThickness="1,1,1,0" CornerRadius="4,4,0,0" Padding="6" Margin="0,5,0,0">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="NARZĘDZIA RME" Classes="section"/>
+                            <WrapPanel ItemSpacing="3" LineSpacing="3">
+                                <Button Classes="tool" Content="Border" Tag="OptionalBorder" Click="MapTool_Click"
+                                        ToolTip.Tip="Optional Border Tool"/>
+                                <Button Classes="tool" Content="PZ" Tag="ProtectionZone" Click="MapTool_Click"
+                                        Background="#14532D" BorderBrush="#4ADE80"/>
+                                <Button Classes="tool" Content="No PvP" Tag="NoPvpZone" Click="MapTool_Click"
+                                        Background="#7F1D1D" BorderBrush="#FB7185"/>
+                                <Button Classes="tool" Content="No logout" Tag="NoLogoutZone" Click="MapTool_Click"
+                                        Background="#1E3A8A" BorderBrush="#60A5FA"/>
+                                <Button Classes="tool" Content="PvP" Tag="PvpZone" Click="MapTool_Click"
+                                        Background="#581C87" BorderBrush="#C084FC"/>
+                                <Button Classes="tool" Content="Spawn" Tag="Spawn" Click="MapTool_Click"
+                                        Background="#701A75" BorderBrush="#E879F9"/>
+                                <Button Classes="tool" Content="Potwór/NPC" Tag="Creature" Click="MapTool_Click"/>
+                                <Button Classes="tool" Content="Dom" Tag="House" Click="MapTool_Click"
+                                        Background="#78350F" BorderBrush="#F59E0B"/>
+                                <Button Classes="tool" Content="Wyczyść" Tag="Clear" Click="MapTool_Click"/>
+                            </WrapPanel>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <StackPanel>
+                                    <TextBlock Text="KSZTAŁT" Classes="section"/>
+                                    <WrapPanel ItemSpacing="3">
+                                        <Button Classes="tool" Content="□" Tag="Kwadrat" Click="BrushShape_Click"
+                                                ToolTip.Tip="Pędzel kwadratowy"/>
+                                        <Button Classes="tool" Content="○" Tag="Okrąg" Click="BrushShape_Click"
+                                                ToolTip.Tip="Pędzel okrągły"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="ROZMIAR:" Classes="section" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding BrushSize}" Foreground="#38BDF8" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <WrapPanel ItemSpacing="3" LineSpacing="3">
+                                        <Button Classes="tool" Content="1×1" Tag="0" Click="BrushSize_Click"/>
+                                        <Button Classes="tool" Content="3×3" Tag="1" Click="BrushSize_Click"/>
+                                        <Button Classes="tool" Content="5×5" Tag="2" Click="BrushSize_Click"/>
+                                        <Button Classes="tool" Content="9×9" Tag="4" Click="BrushSize_Click"/>
+                                        <Button Classes="tool" Content="13×13" Tag="6" Click="BrushSize_Click"/>
+                                        <Button Classes="tool" Content="17×17" Tag="8" Click="BrushSize_Click"/>
+                                        <Button Classes="tool" Content="23×23" Tag="11" Click="BrushSize_Click"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Classes="muted" TextWrapping="Wrap"
+                                       Text="Lewy przycisk: maluj · Shift+PPM: usuń · PPM: menu pola"/>
+                        </StackPanel>
+                    </Border>
+                    <TabControl Padding="0" SelectedIndex="{Binding SelectedWorkspaceTabIndex}">
+                        <TabControl.Template>
+                            <ControlTemplate>
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                    <DockPanel>
+                                        <!-- TabControl potrzebuje aktywnego ItemsPresenter do utworzenia
+                                             SelectedContent; ukrywamy wyłącznie jego nagłówki. -->
+                                        <ItemsPresenter Name="PART_ItemsPresenter"
+                                                        ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                        DockPanel.Dock="Top" Height="0" MinHeight="0"
+                                                        Opacity="0" IsHitTestVisible="False"/>
+                                        <Panel ClipToBounds="True">
+                                            <ContentPresenter Name="PART_SelectedContentHost2"
+                                                              HorizontalContentAlignment="Stretch"
+                                                              VerticalContentAlignment="Stretch"
+                                                              IsVisible="False"/>
+                                            <ContentPresenter Name="PART_SelectedContentHost"
+                                                              HorizontalContentAlignment="Stretch"
+                                                              VerticalContentAlignment="Stretch"/>
+                                        </Panel>
+                                    </DockPanel>
+                                </Border>
+                            </ControlTemplate>
+                        </TabControl.Template>
+                        <TabItem Header="{Binding TerrainPaletteHeader}">
+                            <Grid>
+                                <ListBox ItemsSource="{Binding TerrainPalette}"
+                                         ItemTemplate="{StaticResource RmePaletteTileTemplate}"
+                                         Padding="2"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                </ListBox>
+                                <TextBlock Text="{Binding PaletteEmptyMessage}" IsVisible="{Binding IsTerrainPaletteEmpty}"
+                                           Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="18"/>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="{Binding DoodadPaletteHeader}">
+                            <Grid>
+                                <ListBox ItemsSource="{Binding DoodadPalette}"
+                                         ItemTemplate="{StaticResource RmePaletteTileTemplate}"
+                                         Padding="2"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                </ListBox>
+                                <TextBlock Text="{Binding PaletteEmptyMessage}" IsVisible="{Binding IsDoodadPaletteEmpty}"
+                                           Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="18"/>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="{Binding ItemPaletteHeader}">
+                            <Grid>
+                                <ListBox ItemsSource="{Binding ItemPalette}"
+                                         ItemTemplate="{StaticResource RmePaletteItemTemplate}"/>
+                                <TextBlock Text="{Binding PaletteEmptyMessage}" IsVisible="{Binding IsItemPaletteEmpty}"
+                                           Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="18"/>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="{Binding RawPaletteHeader}">
+                            <Grid>
+                                <ListBox ItemsSource="{Binding RawPalette}"
+                                         ItemTemplate="{StaticResource RmePaletteItemTemplate}"/>
+                                <TextBlock Text="{Binding PaletteEmptyMessage}" IsVisible="{Binding IsRawPaletteEmpty}"
+                                           Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="18"/>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="{Binding CollectionPaletteHeader}">
+                            <Grid>
+                                <ListBox ItemsSource="{Binding CollectionPalette}"
+                                         ItemTemplate="{StaticResource RmePaletteTileTemplate}"
+                                         Padding="2"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                </ListBox>
+                                <TextBlock Text="{Binding PaletteEmptyMessage}" IsVisible="{Binding IsCollectionPaletteEmpty}"
+                                           Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="18"/>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="{Binding CreaturePaletteHeader}">
+                            <DockPanel LastChildFill="True">
+                                <Border DockPanel.Dock="Top" Background="#0B1220" Padding="8" Margin="0,0,0,4">
+                                    <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,92" ColumnSpacing="6" RowSpacing="4">
+                                        <NumericUpDown Grid.Column="1" Value="{Binding SpawnRadius}"
+                                                       Minimum="1" Maximum="50" ShowButtonSpinner="True"/>
+                                        <TextBlock Text="Promień spawnu" Classes="muted" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Row="1" Text="Czas odrodzenia" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding DefaultSpawnTime}"
+                                                       Minimum="1" Maximum="86400" ShowButtonSpinner="True"/>
+                                        <Button Grid.Row="2" Grid.ColumnSpan="2" Classes="tool"
+                                                Content="Importuj potwory / NPC z XML…" Click="ImportCreatures_Click"/>
+                                        <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Classes="muted"
+                                                   Margin="0,3,0,0" TextWrapping="Wrap"
+                                                   Text="Źródła: wbudowane rme-data, stworzenia zapisane na mapie oraz XML wybrane ręcznie. Program nie przeszukuje folderów silnika."/>
+                                    </Grid>
+                                </Border>
+                                <Grid>
+                                    <ListBox ItemsSource="{Binding CreaturePalette}"
+                                             ItemTemplate="{StaticResource RmePaletteItemTemplate}"/>
+                                    <TextBlock Text="{Binding PaletteEmptyMessage}" IsVisible="{Binding IsCreaturePaletteEmpty}"
+                                               Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="18"/>
+                                </Grid>
+                            </DockPanel>
+                        </TabItem>
+                        <TabItem Header="Houses">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="5" Margin="4">
+                                    <TextBlock Text="House Editor" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding HouseEntries}" SelectedItem="{Binding SelectedHouse}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <WrapPanel ItemSpacing="4">
+                                        <Button Classes="tool" Content="＋" Command="{Binding AddHouseCommand}"/>
+                                        <Button Classes="tool" Content="Zapisz" Command="{Binding ApplyHouseCommand}"/>
+                                        <Button Classes="tool" Content="Usuń" Command="{Binding DeleteHouseCommand}"/>
+                                        <Button Classes="tool" Content="Idź" Command="{Binding GoToHouseCommand}"/>
+                                    </WrapPanel>
+                                    <Grid ColumnDefinitions="*,86" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="5" RowSpacing="4">
+                                        <TextBlock Text="House ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding HouseId}" Minimum="1" Maximum="2147483647"/>
+                                        <TextBlock Grid.Row="1" Text="Town ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding HouseTownId}" Minimum="0" Maximum="2147483647"/>
+                                        <TextBlock Grid.Row="2" Text="Rent" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding HouseRent}" Minimum="0" Maximum="2147483647"/>
+                                        <CheckBox Grid.Row="3" Grid.ColumnSpan="2" Content="Guildhall" IsChecked="{Binding HouseIsGuildhall}"/>
+                                    </Grid>
+                                    <TextBox Text="{Binding HouseName}" PlaceholderText="House name"/>
+                                    <TextBlock Text="Entry position" Classes="section"/>
+                                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                        <NumericUpDown Value="{Binding HouseEntryX}" Minimum="0" Maximum="65535"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding HouseEntryY}" Minimum="0" Maximum="65535"/>
+                                        <NumericUpDown Grid.Column="2" Value="{Binding HouseEntryZ}" Minimum="0" Maximum="15"/>
+                                    </Grid>
+                                    <TextBlock Text="House brushes" Classes="section" Margin="0,5,0,0"/>
+                                    <ListBox ItemsSource="{Binding HousePalette}" Height="190"
+                                             ItemTemplate="{StaticResource RmePaletteItemTemplate}"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Waypoints">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="5" Margin="4">
+                                    <TextBlock Text="Waypoint Manager" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding WaypointEntries}" SelectedItem="{Binding SelectedWaypoint}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <WrapPanel ItemSpacing="4">
+                                        <Button Classes="tool" Content="＋" Command="{Binding AddWaypointCommand}"/>
+                                        <Button Classes="tool" Content="Zapisz" Command="{Binding ApplyWaypointCommand}"/>
+                                        <Button Classes="tool" Content="Usuń" Command="{Binding DeleteWaypointCommand}"/>
+                                        <Button Classes="tool" Content="Idź" Command="{Binding GoToWaypointCommand}"/>
+                                    </WrapPanel>
+                                    <TextBox Text="{Binding WaypointName}" PlaceholderText="Waypoint name"/>
+                                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                        <NumericUpDown Value="{Binding WaypointX}" Minimum="0" Maximum="65535"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding WaypointY}" Minimum="0" Maximum="65535"/>
+                                        <NumericUpDown Grid.Column="2" Value="{Binding WaypointZ}" Minimum="0" Maximum="15"/>
+                                    </Grid>
+                                    <TextBlock Text="Waypoint brushes" Classes="section" Margin="0,5,0,0"/>
+                                    <ListBox ItemsSource="{Binding WaypointPalette}" Height="230"
+                                             ItemTemplate="{StaticResource RmePaletteItemTemplate}"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Towns">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="5" Margin="4">
+                                    <TextBlock Text="Town Editor" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding TownEntries}" SelectedItem="{Binding SelectedTown}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <WrapPanel ItemSpacing="4">
+                                        <Button Classes="tool" Content="＋" Command="{Binding AddTownCommand}"/>
+                                        <Button Classes="tool" Content="Zapisz" Command="{Binding ApplyTownCommand}"/>
+                                        <Button Classes="tool" Content="Usuń" Command="{Binding DeleteTownCommand}"/>
+                                        <Button Classes="tool" Content="Idź" Command="{Binding GoToTownCommand}"/>
+                                    </WrapPanel>
+                                    <Grid ColumnDefinitions="*,86" ColumnSpacing="5">
+                                        <TextBlock Text="Town ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding TownId}" Minimum="1" Maximum="2147483647"/>
+                                    </Grid>
+                                    <TextBox Text="{Binding TownName}" PlaceholderText="Town name"/>
+                                    <TextBlock Text="Temple position" Classes="section"/>
+                                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                                        <NumericUpDown Value="{Binding TownTempleX}" Minimum="0" Maximum="65535"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding TownTempleY}" Minimum="0" Maximum="65535"/>
+                                        <NumericUpDown Grid.Column="2" Value="{Binding TownTempleZ}" Minimum="0" Maximum="15"/>
+                                    </Grid>
+                                    <TextBlock Text="Zmiana Town ID automatycznie aktualizuje przypisane domy. Miasta używanego przez domy nie można przypadkiem usunąć."
+                                               Classes="muted" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="View">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="5" Margin="4">
+                                    <TextBlock Text="RME View Settings" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <CheckBox Content="Show grid" IsChecked="{Binding ShowGrid}"/>
+                                    <CheckBox Content="Show all floors" IsChecked="{Binding ShowAllFloors}"/>
+                                    <CheckBox Content="Show shade" IsChecked="{Binding ShowShade}"/>
+                                    <CheckBox Content="Show items" IsChecked="{Binding ShowItems}"/>
+                                    <CheckBox Content="Show creatures" IsChecked="{Binding ShowCreatures}"/>
+                                    <CheckBox Content="Show spawns" IsChecked="{Binding ShowSpawns}"/>
+                                    <CheckBox Content="Show houses" IsChecked="{Binding ShowHouses}"/>
+                                    <CheckBox Content="Show towns" IsChecked="{Binding ShowTowns}"/>
+                                    <CheckBox Content="Show waypoints" IsChecked="{Binding ShowWaypoints}"/>
+                                    <CheckBox Content="Show special tiles" IsChecked="{Binding ShowSpecialTiles}"/>
+                                    <CheckBox Content="Always show zones" IsChecked="{Binding AlwaysShowZones}"/>
+                                    <CheckBox Content="Extended house shader" IsChecked="{Binding ExtendedHouseShader}"/>
+                                    <CheckBox Content="Show pathing/blocking" IsChecked="{Binding ShowBlocking}"/>
+                                    <CheckBox Content="Show tooltips" IsChecked="{Binding ShowTooltips}"/>
+                                    <CheckBox Content="Show brush/border preview" IsChecked="{Binding ShowPreview}"/>
+                                    <CheckBox Content="Show animation (L)" IsChecked="{Binding ShowAnimation}"/>
+                                    <CheckBox Content="Show as minimap (Shift+E)" IsChecked="{Binding ShowAsMinimap}"/>
+                                    <CheckBox Content="Only show colors (Ctrl+E)" IsChecked="{Binding ShowOnlyColors}"/>
+                                    <CheckBox Content="Show light" IsChecked="{Binding ShowLights}"/>
+                                    <CheckBox Content="Show light strength" IsChecked="{Binding ShowLightStrength}"/>
+                                    <CheckBox Content="Fog in light view" IsChecked="{Binding ExperimentalFog}"/>
+                                    <CheckBox Content="Show technical items" IsChecked="{Binding ShowTechnicalItems}"/>
+                                    <CheckBox Content="Show wall hooks" IsChecked="{Binding ShowWallHooks}"/>
+                                    <CheckBox Content="Highlight items" IsChecked="{Binding HighlightItems}"/>
+                                    <CheckBox Content="Highlight locked doors" IsChecked="{Binding HighlightLockedDoors}"/>
+                                    <CheckBox Content="Ghost loose items" IsChecked="{Binding GhostLooseItems}"/>
+                                    <CheckBox Content="Ghost higher floors" IsChecked="{Binding GhostHigherFloors}"/>
+                                    <CheckBox Content="Show client box" IsChecked="{Binding ShowClientBox}"/>
+                                    <CheckBox Content="Only show Modified" IsChecked="{Binding ShowOnlyModified}"/>
+                                    <WrapPanel ItemSpacing="4" Margin="0,5,0,0">
+                                        <Button Classes="tool" Content="Reload data (F5)" Command="{Binding ReloadDataCommand}"/>
+                                        <Button Classes="tool" Content="Screenshot (F10)" Click="TakeScreenshot_Click"/>
+                                        <Button Classes="tool" Content="Fullscreen (F11)" Click="ToggleFullscreen_Click"/>
+                                    </WrapPanel>
+                                    <TextBlock Text="Widok niższych pięter jest cieniowany; tryb kolorów używa dokładnej 216-kolorowej palety minimapy Tibii."
+                                               Classes="muted" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Minimap">
+                            <StackPanel Spacing="6" Margin="4">
+                                <TextBlock Text="Minimap" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                <Border Background="#020617" BorderBrush="#334155" BorderThickness="1"
+                                        Width="260" Height="260">
+                                    <Canvas Width="256" Height="256">
+                                        <Image Source="{Binding MinimapImage}" Width="256" Height="256"
+                                               Stretch="Uniform"
+                                               PointerPressed="Minimap_PointerPressed"
+                                               RenderOptions.BitmapInterpolationMode="None"/>
+                                        <Border Canvas.Left="{Binding MinimapViewportLeft}"
+                                                Canvas.Top="{Binding MinimapViewportTop}"
+                                                Width="{Binding MinimapViewportWidth}"
+                                                Height="{Binding MinimapViewportHeight}"
+                                                IsVisible="{Binding IsMinimapViewportVisible}"
+                                                IsHitTestVisible="False"
+                                                BorderBrush="#22D3EE" BorderThickness="1.5"
+                                                Background="#1422D3EE"/>
+                                    </Canvas>
+                                </Border>
+                                <TextBlock Text="{Binding MinimapStatus}" Classes="muted" TextWrapping="Wrap"/>
+                                <ProgressBar Minimum="0" Maximum="100" Value="{Binding MinimapProgress}"
+                                             IsVisible="{Binding IsMinimapLoading}" Height="7"/>
+                                <Button Classes="tool" Content="Odśwież minimapę" Command="{Binding RefreshMinimapCommand}"/>
+                                <TextBlock Text="Export Minimap" Classes="section" Margin="0,5,0,0"/>
+                                <ComboBox ItemsSource="{Binding MinimapExportModes}"
+                                          SelectedItem="{Binding MinimapExportMode}"/>
+                                <Button Classes="primary" Content="Eksportuj BMP…" Click="ExportMinimap_Click"/>
+                                <TextBlock Text="All Floors zapisuje osobny plik _0…_15; Selected Area eksportuje dokładnie zaznaczony zakres."
+                                           Classes="muted" TextWrapping="Wrap"/>
+                                <Border Height="1" Background="#334155" Margin="0,5"/>
+                                <TextBlock Text="Navigate" Classes="section"/>
+                                <WrapPanel ItemSpacing="4">
+                                    <Button Classes="tool" Content="← Poprzednia" Command="{Binding NavigateBackCommand}"
+                                            IsEnabled="{Binding CanNavigateBack}"/>
+                                    <Button Classes="tool" Content="Następna →" Command="{Binding NavigateForwardCommand}"
+                                            IsEnabled="{Binding CanNavigateForward}"/>
+                                </WrapPanel>
+                                <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" ColumnSpacing="4">
+                                    <TextBlock Text="X" Classes="muted" VerticalAlignment="Center"/>
+                                    <NumericUpDown Grid.Column="1" Value="{Binding GoToX}" Minimum="0" Maximum="65535"/>
+                                    <TextBlock Grid.Column="2" Text="Y" Classes="muted" VerticalAlignment="Center"/>
+                                    <NumericUpDown Grid.Column="3" Value="{Binding GoToY}" Minimum="0" Maximum="65535"/>
+                                    <TextBlock Grid.Column="4" Text="Z" Classes="muted" VerticalAlignment="Center"/>
+                                    <NumericUpDown Grid.Column="5" Value="{Binding GoToZ}" Minimum="0" Maximum="15"/>
+                                </Grid>
+                                <Button Classes="success" Content="Idź do pozycji" Command="{Binding GoToPositionCommand}"/>
+                                <TextBlock Text="Jump to Item / Brush" Classes="section" Margin="0,4,0,0"/>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                                    <NumericUpDown Value="{Binding JumpToItemId}" Minimum="0" Maximum="65535"/>
+                                    <Button Grid.Column="1" Classes="tool" Content="Jump to Item"
+                                            Command="{Binding JumpToItemCommand}"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                                    <TextBox Text="{Binding JumpToBrushQuery}" PlaceholderText="Nazwa brushu…"/>
+                                    <Button Grid.Column="1" Classes="tool" Content="Jump to Brush"
+                                            Command="{Binding JumpToBrushCommand}"/>
+                                </Grid>
+                                <TextBlock Text="Kliknij minimapę, aby wyśrodkować widok. Turkusowa ramka pokazuje aktualny viewport."
+                                           Classes="muted" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Map">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="6" Margin="4">
+                                    <TextBlock Text="Map Properties" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Map Description" Classes="muted"/>
+                                    <TextBox Text="{Binding MapDescription}" AcceptsReturn="True"
+                                             MinHeight="58" TextWrapping="Wrap"/>
+                                    <Grid ColumnDefinitions="*,90" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                                          ColumnSpacing="6" RowSpacing="4">
+                                        <TextBlock Text="Width" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding MapWidth}" Minimum="256" Maximum="65535"/>
+                                        <TextBlock Grid.Row="1" Text="Height" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding MapHeight}" Minimum="256" Maximum="65535"/>
+                                        <TextBlock Grid.Row="2" Text="OTBM version" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding MapVersion}" Minimum="0" Maximum="4"/>
+                                        <TextBlock Grid.Row="3" Text="items.otb major" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding MapItemsMajorVersion}" Minimum="0" Maximum="2147483647"/>
+                                        <TextBlock Grid.Row="4" Text="items.otb minor" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding MapItemsMinorVersion}" Minimum="0" Maximum="2147483647"/>
+                                    </Grid>
+                                    <TextBlock Text="External Housefile" Classes="muted"/>
+                                    <TextBox Text="{Binding MapHouseFile}"/>
+                                    <TextBlock Text="External Spawnfile" Classes="muted"/>
+                                    <TextBox Text="{Binding MapSpawnFile}"/>
+                                    <TextBlock Text="External NPC Spawnfile (Canary)" Classes="muted"/>
+                                    <TextBox Text="{Binding MapSpawnNpcFile}"/>
+                                    <Button Classes="success" Content="Zastosuj Map Properties"
+                                            Command="{Binding ApplyMapPropertiesCommand}"/>
+                                    <TextBlock Text="Zmiana wersji zapisuje nagłówek OTBM; przed obniżeniem wersji klienta wykonaj kopię mapy."
+                                               Classes="muted" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Import/Search">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="6" Margin="4">
+                                    <TextBlock Text="Import Map" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Offset X / Y" Classes="section"/>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="4">
+                                        <NumericUpDown Value="{Binding ImportOffsetX}" Minimum="-65535" Maximum="65535"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding ImportOffsetY}" Minimum="-65535" Maximum="65535"/>
+                                    </Grid>
+                                    <TextBlock Text="House import behaviour" Classes="muted"/>
+                                    <ComboBox ItemsSource="{Binding ImportHouseModes}" SelectedItem="{Binding ImportHouseMode}"/>
+                                    <CheckBox Content="Merge spawns" IsChecked="{Binding ImportSpawns}"/>
+                                    <Button Classes="primary" Content="Wybierz i importuj mapę…" Click="ImportOtbm_Click"/>
+                                    <Button Classes="tool" Content="Import Monsters/NPC…" Click="ImportCreatures_Click"/>
+                                    <Button Classes="tool" Content="Export Tilesets…" Click="ExportTilesets_Click"/>
+                                    <Border Height="1" Background="#334155" Margin="0,6"/>
+                                    <TextBlock Text="Find" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <ComboBox ItemsSource="{Binding SearchModes}" SelectedItem="{Binding SearchMode}"/>
+                                    <TextBox Text="{Binding MapSearchQuery}" PlaceholderText="Item ID, UID, AID lub X,Y,Z"/>
+                                    <CheckBox Content="Only selected area" IsChecked="{Binding SearchSelectionOnly}"/>
+                                    <Button Classes="tool" Content="Szukaj" Command="{Binding SearchMapCommand}"/>
+                                    <ListBox ItemsSource="{Binding SearchResults}" SelectedItem="{Binding SelectedSearchResult}"
+                                             Height="220">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:MapSearchResult">
+                                                <StackPanel Margin="2">
+                                                    <TextBlock Text="{Binding PositionLabel}" Foreground="#E5EDF8" FontFamily="Consolas"/>
+                                                    <TextBlock Text="{Binding Description}" Classes="muted" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <Button Classes="success" Content="Idź do wyniku" Command="{Binding GoToSearchResultCommand}"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Convert">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="7" Margin="4">
+                                    <TextBlock Text="Safe Client Conversion" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Konwersja mapuje każdy użyty Server ID przez hash sprite'a lub zgodny Client ID i typ z obu plików items.otb. Jeśli choć jeden obiekt jest niejednoznaczny, cała operacja zostaje zablokowana."
+                                               Classes="muted" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Target client folder" Classes="section"/>
+                                    <TextBox Text="{Binding ConversionTargetFolder}" IsReadOnly="True"
+                                             PlaceholderText="Wybierz folder klienta docelowego…"/>
+                                    <Button Classes="primary" Content="Wybierz i przeanalizuj…" Click="ConversionFolder_Click"/>
+                                    <Border Background="#0B1220" BorderBrush="#334155" BorderThickness="1"
+                                            CornerRadius="4" Padding="7">
+                                        <TextBlock Text="{Binding ConversionReport}" TextWrapping="Wrap"
+                                                   Foreground="#CBD5E1"/>
+                                    </Border>
+                                    <Button Classes="success" Content="Zastosuj bezpieczną konwersję"
+                                            Command="{Binding ApplyConversionCommand}"
+                                            IsEnabled="{Binding CanApplyConversion}"/>
+                                    <TextBlock Text="Zmiana odbywa się w pamięci i ma Undo. Przy zapisie istniejącego pliku program zachowuje automatyczną kopię .bak."
+                                               Classes="muted" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Tools">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="6" Margin="4">
+                                    <TextBlock Text="Border / Randomize" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <UniformGrid Columns="2" Rows="2">
+                                        <Button Classes="tool" Content="Borderize Selection" Command="{Binding BorderizeSelectionCommand}" Margin="2"/>
+                                        <Button Classes="tool" Content="Borderize Map" Command="{Binding BorderizeMapCommand}" Margin="2"/>
+                                        <Button Classes="tool" Content="Randomize Selection" Command="{Binding RandomizeSelectionCommand}" Margin="2"/>
+                                        <Button Classes="tool" Content="Randomize Map" Command="{Binding RandomizeMapCommand}" Margin="2"/>
+                                    </UniformGrid>
+                                    <Border Height="1" Background="#334155" Margin="0,4"/>
+                                    <TextBlock Text="Replace / Remove Items" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <Grid ColumnDefinitions="*,86" RowDefinitions="Auto,Auto" ColumnSpacing="5" RowSpacing="4">
+                                        <TextBlock Text="Source Server ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding BulkItemId}" Minimum="0" Maximum="65535"/>
+                                        <TextBlock Grid.Row="1" Text="Target Server ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding BulkReplacementId}" Minimum="0" Maximum="65535"/>
+                                    </Grid>
+                                    <CheckBox Content="Only selected area" IsChecked="{Binding BulkSelectionOnly}"/>
+                                    <WrapPanel ItemSpacing="4">
+                                        <Button Classes="tool" Content="Replace" Command="{Binding ReplaceItemsCommand}"/>
+                                        <Button Classes="tool" Content="Remove" Command="{Binding RemoveItemsCommand}"/>
+                                    </WrapPanel>
+                                    <Border Height="1" Background="#334155" Margin="0,4"/>
+                                    <TextBlock Text="Maintenance" Foreground="#E5EDF8" FontWeight="SemiBold"/>
+                                    <Button Classes="tool" Content="Remove all Corpses" Command="{Binding RemoveCorpsesCommand}"/>
+                                    <Button Classes="tool" Content="Remove all Unreachable Tiles" Command="{Binding RemoveUnreachableTilesCommand}"/>
+                                    <Button Classes="tool" Content="Clear Invalid Houses" Command="{Binding ClearInvalidHousesCommand}"/>
+                                    <Button Classes="tool" Content="Clear Modified State" Command="{Binding ClearModifiedStateCommand}"/>
+                                    <Button Classes="tool" Content="Cleanup invalid items" Command="{Binding CleanupMapCommand}"/>
+                                    <Button Classes="tool" Content="Map Statistics" Command="{Binding CalculateStatisticsCommand}"/>
+                                    <TextBlock Text="{Binding MapStatistics}" FontFamily="Consolas" Classes="muted" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Tile">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="6" Margin="4">
+                                    <Button Classes="primary" Content="Wczytaj pole pod kursorem"
+                                            Command="{Binding OpenHoveredTilePropertiesCommand}"/>
+                                    <TextBlock Text="{Binding PropertyTileLabel}" Foreground="#E5EDF8"
+                                               FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Tile Flags" Classes="section"/>
+                                    <WrapPanel ItemSpacing="7" LineSpacing="3">
+                                        <CheckBox Content="Protection Zone" IsChecked="{Binding PropertyProtectionZone}"/>
+                                        <CheckBox Content="No PvP" IsChecked="{Binding PropertyNoPvpZone}"/>
+                                        <CheckBox Content="No Logout" IsChecked="{Binding PropertyNoLogoutZone}"/>
+                                        <CheckBox Content="PvP Zone" IsChecked="{Binding PropertyPvpZone}"/>
+                                        <CheckBox Content="Refresh" IsChecked="{Binding PropertyRefreshTile}"/>
+                                    </WrapPanel>
+                                    <Button Classes="success" Content="Zastosuj flagi pola"
+                                            Command="{Binding ApplyTilePropertiesCommand}"/>
+                                    <Border Height="1" Background="#334155" Margin="0,4"/>
+                                    <TextBlock Text="Item Properties" Classes="section"/>
+                                    <ListBox ItemsSource="{Binding TilePropertyItems}"
+                                             SelectedItem="{Binding SelectedPropertyItem}"
+                                             MaxHeight="120">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:MapTilePropertyItem">
+                                                <TextBlock Text="{Binding Label}" FontFamily="Consolas"
+                                                           FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <Grid ColumnDefinitions="*,90" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                                          ColumnSpacing="6" RowSpacing="4">
+                                        <TextBlock Text="Action ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding PropertyActionId}" Minimum="0" Maximum="65535"/>
+                                        <TextBlock Grid.Row="1" Text="Unique ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding PropertyUniqueId}" Minimum="0" Maximum="65535"/>
+                                        <TextBlock Grid.Row="2" Text="Count / subtype" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding PropertyCount}" Minimum="0" Maximum="255"/>
+                                        <TextBlock Grid.Row="3" Text="Depot ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding PropertyDepotId}" Minimum="0" Maximum="65535"/>
+                                        <TextBlock Grid.Row="4" Text="House door ID" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding PropertyHouseDoorId}" Minimum="0" Maximum="255"/>
+                                        <TextBlock Grid.Row="5" Text="Tier" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding PropertyTier}" Minimum="0" Maximum="255"/>
+                                    </Grid>
+                                    <Expander Header="Legacy / runtime attributes">
+                                        <Grid ColumnDefinitions="*,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                                              ColumnSpacing="6" RowSpacing="4" Margin="0,4,0,2">
+                                            <TextBlock Text="Rune charges" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding PropertyRuneCharges}" Minimum="0" Maximum="255"/>
+                                            <TextBlock Grid.Row="1" Text="Duration" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding PropertyDuration}" Minimum="0" Maximum="4294967295"/>
+                                            <TextBlock Grid.Row="2" Text="Decaying state" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding PropertyDecayingState}" Minimum="0" Maximum="255"/>
+                                            <TextBlock Grid.Row="3" Text="Written date" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding PropertyWrittenDate}" Minimum="0" Maximum="4294967295"/>
+                                            <TextBlock Grid.Row="4" Text="Written by" Classes="muted" VerticalAlignment="Center"/>
+                                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PropertyWrittenBy}"/>
+                                            <TextBlock Grid.Row="5" Text="Sleeper GUID" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding PropertySleeperGuid}" Minimum="0" Maximum="4294967295"/>
+                                            <TextBlock Grid.Row="6" Text="Sleep start" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="6" Grid.Column="1" Value="{Binding PropertySleepStart}" Minimum="0" Maximum="4294967295"/>
+                                            <TextBlock Grid.Row="7" Text="Charges" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding PropertyCharges}" Minimum="0" Maximum="65535"/>
+                                        </Grid>
+                                    </Expander>
+                                    <TextBlock Text="Text" Classes="muted"/>
+                                    <TextBox Text="{Binding PropertyText}" AcceptsReturn="True" MinHeight="54" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Description" Classes="muted"/>
+                                    <TextBox Text="{Binding PropertyDescription}" AcceptsReturn="True" MinHeight="42" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Teleport destination" Classes="section"/>
+                                    <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" ColumnSpacing="4">
+                                        <TextBlock Text="X" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding PropertyTeleportX}" Minimum="0" Maximum="65535"/>
+                                        <TextBlock Grid.Column="2" Text="Y" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="3" Value="{Binding PropertyTeleportY}" Minimum="0" Maximum="65535"/>
+                                        <TextBlock Grid.Column="4" Text="Z" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="5" Value="{Binding PropertyTeleportZ}" Minimum="0" Maximum="15"/>
+                                    </Grid>
+                                    <Expander Header="Podium Properties">
+                                        <StackPanel Spacing="4" Margin="0,4,0,2">
+                                            <CheckBox Content="Podium outfit data" IsChecked="{Binding PropertyHasPodiumOutfit}"/>
+                                            <WrapPanel ItemSpacing="8">
+                                                <CheckBox Content="Show platform" IsChecked="{Binding PropertyPodiumShowPlatform}"/>
+                                                <CheckBox Content="Show outfit" IsChecked="{Binding PropertyPodiumShowOutfit}"/>
+                                                <CheckBox Content="Show mount" IsChecked="{Binding PropertyPodiumShowMount}"/>
+                                            </WrapPanel>
+                                            <Grid ColumnDefinitions="*,78" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                                                  ColumnSpacing="6" RowSpacing="3" IsEnabled="{Binding PropertyHasPodiumOutfit}">
+                                                <TextBlock Text="Direction" Classes="muted"/><NumericUpDown Grid.Column="1" Value="{Binding PropertyPodiumDirection}" Minimum="0" Maximum="255"/>
+                                                <TextBlock Grid.Row="1" Text="LookType" Classes="muted"/><NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding PropertyPodiumLookType}" Minimum="0" Maximum="65535"/>
+                                                <TextBlock Grid.Row="2" Text="Head" Classes="muted"/><NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding PropertyPodiumLookHead}" Minimum="0" Maximum="133"/>
+                                                <TextBlock Grid.Row="3" Text="Body" Classes="muted"/><NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding PropertyPodiumLookBody}" Minimum="0" Maximum="133"/>
+                                                <TextBlock Grid.Row="4" Text="Legs" Classes="muted"/><NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding PropertyPodiumLookLegs}" Minimum="0" Maximum="133"/>
+                                                <TextBlock Grid.Row="5" Text="Feet" Classes="muted"/><NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding PropertyPodiumLookFeet}" Minimum="0" Maximum="133"/>
+                                                <TextBlock Grid.Row="6" Text="Addon" Classes="muted"/><NumericUpDown Grid.Row="6" Grid.Column="1" Value="{Binding PropertyPodiumLookAddon}" Minimum="0" Maximum="3"/>
+                                                <TextBlock Grid.Row="7" Text="Mount" Classes="muted"/><NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding PropertyPodiumLookMount}" Minimum="0" Maximum="65535"/>
+                                                <TextBlock Grid.Row="8" Text="Mount head/body" Classes="muted"/>
+                                                <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" Spacing="2"><NumericUpDown Width="38" Value="{Binding PropertyPodiumMountHead}" Minimum="0" Maximum="133"/><NumericUpDown Width="38" Value="{Binding PropertyPodiumMountBody}" Minimum="0" Maximum="133"/></StackPanel>
+                                                <TextBlock Grid.Row="9" Text="Mount legs/feet" Classes="muted"/>
+                                                <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Spacing="2"><NumericUpDown Width="38" Value="{Binding PropertyPodiumMountLegs}" Minimum="0" Maximum="133"/><NumericUpDown Width="38" Value="{Binding PropertyPodiumMountFeet}" Minimum="0" Maximum="133"/></StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Expander>
+                                    <Expander Header="Custom Attributes (OTBM 4)">
+                                        <StackPanel Spacing="4" Margin="0,4,0,2">
+                                            <ListBox ItemsSource="{Binding PropertyCustomAttributes}"
+                                                     SelectedItem="{Binding SelectedPropertyCustomAttribute}"
+                                                     MaxHeight="170">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:MapCustomAttributeItem">
+                                                        <Grid ColumnDefinitions="80,78,*" ColumnSpacing="3">
+                                                            <TextBox Text="{Binding Key}" PlaceholderText="Key"/>
+                                                            <ComboBox Grid.Column="1" SelectedItem="{Binding Type}">
+                                                                <x:String>String</x:String><x:String>Integer</x:String><x:String>Float</x:String><x:String>Boolean</x:String><x:String>Double</x:String>
+                                                            </ComboBox>
+                                                            <TextBox Grid.Column="2" Text="{Binding Value}" PlaceholderText="Value"/>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                            <WrapPanel ItemSpacing="4">
+                                                <Button Classes="tool" Content="Add attribute" Command="{Binding AddCustomAttributeCommand}"/>
+                                                <Button Classes="danger" Content="Remove selected" Command="{Binding RemoveCustomAttributeCommand}"/>
+                                            </WrapPanel>
+                                            <TextBlock Text="Typy i format są zgodne z tabelą atrybutów RME; aid, uid, text, desc i tier edytuje się powyżej."
+                                                       Classes="muted" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Expander>
+                                    <Button Classes="success" Content="Zastosuj właściwości"
+                                            Command="{Binding ApplyItemPropertiesCommand}"/>
+                                    <TextBlock Text="{Binding PropertyStatus}" Classes="muted" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- ROW 3: Status bar -->
+        <Border Grid.Row="3" Background="#0F172A" BorderBrush="#1E293B" BorderThickness="0,1,0,0" Padding="10,4">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="📍" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding HoveredTileLabel}" FontFamily="Consolas" FontSize="11"
+                               Foreground="#E5EDF8" VerticalAlignment="Center"/>
+                    <Border Width="1" Background="#1E293B"/>
+                    <TextBlock Text="🖌" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding BrushModeLabel}" FontFamily="Consolas" FontSize="11"
+                               Foreground="#22D3EE" VerticalAlignment="Center"
+                               ToolTip.Tip="Kliknij item w palecie aby wybrać brush. Lewy klik na tile = postaw, prawy klik = wymaż."/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding MapSummary}" Foreground="#94A3B8" FontSize="11"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding RenderDiagnosticsLabel}"
+                           Foreground="#34D399" FontFamily="Consolas" FontSize="10"
+                           VerticalAlignment="Center"
+                           ToolTip.Tip="FPS = liczba rzeczywistych odrysowań na sekundę; render = średni czas rysowania; widok = czas przygotowania danych kafelków."/>
+                <TextBlock Grid.Column="3" Text="{Binding Status}" Foreground="#FBBF24" FontSize="11"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+    </Grid>
+</UserControl>

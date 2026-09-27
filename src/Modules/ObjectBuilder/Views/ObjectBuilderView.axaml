@@ -1,0 +1,621 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modules.ObjectBuilder.ViewModels"
+             x:Class="Modules.ObjectBuilder.Views.ObjectBuilderView"
+             x:DataType="vm:ObjectBuilderViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.sprite-grid-cell">
+            <Setter Property="Background" Value="#01000000"/>
+            <Setter Property="BorderBrush" Value="#6B475569"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Border.sprite-grid-cell:pointerover">
+            <Setter Property="Background" Value="#4038BDF8"/>
+            <Setter Property="BorderBrush" Value="#7DD3FC"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+        <Style Selector="Border.sprite-grid-cell.selected">
+            <Setter Property="BorderBrush" Value="#38BDF8"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <Border Grid.Row="0" Classes="app-commandbar" Padding="8,6">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,12,Auto,Auto,Auto,*,Auto" ColumnSpacing="6">
+                <Button Grid.Column="0" Content="Otwórz DAT+SPR" Command="{Binding OpenLegacyAssetsCommand}"
+                        ToolTip.Tip="Wybiera folder i ładuje razem Tibia.dat oraz Tibia.spr."/>
+                <Button Grid.Column="1" Content="Otwórz Tibia.dat" Command="{Binding OpenDatCommand}"/>
+                <Button Grid.Column="2" Content="Otwórz Tibia.spr" Command="{Binding OpenSprCommand}"/>
+                <Button Grid.Column="3" Content="Zapisz Tibia.dat" Command="{Binding SaveDatCommand}"/>
+                <Button Grid.Column="4" Content="Zapisz Tibia.spr" Command="{Binding SaveSprCommand}"/>
+                <Button Grid.Column="6" Content="Importuj OBD" Command="{Binding ImportObdCommand}"
+                        ToolTip.Tip="Importuje z OBD obiekty, sprite'y, offset i wszystkie zapisane flagi."/>
+                <Button Grid.Column="7" Content="Importuj AEC" Command="{Binding ImportAecCommand}"
+                        ToolTip.Tip="Importuje obiekty, sprite'y i offset z AEC; złożone sprite'y dzieli na kafle 32×32. Pozostałe flagi są pomijane."/>
+                <Button Grid.Column="8" Content="Eksportuj" Click="ExportObjects_Click"
+                        ToolTip.Tip="Eksportuje zaznaczone obiekty jako PNG, BMP, JPG, OBD albo AEC. OBD zachowuje flagi, AEC pomija flagi."/>
+                <Border Grid.Column="9" Background="#111827" BorderBrush="#26344B" BorderThickness="1" CornerRadius="5" Padding="10,5">
+                    <TextBlock Text="{Binding LegacyOptionsSummary}" Classes="muted" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                </Border>
+                <Border Grid.Column="10" Background="#7C2D12" CornerRadius="5" Padding="9,5" IsVisible="{Binding HasUnsavedChanges}">
+                    <TextBlock Text="Niezapisane zmiany" Foreground="#FED7AA" FontWeight="SemiBold" FontSize="11"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="275,*,292">
+            <!-- Lewy katalog obiektów -->
+            <Border Grid.Column="0" Background="#090F1C" BorderBrush="#1E293B" BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+                    <Border Grid.Row="0" Background="#111827" Padding="8">
+                        <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4">
+                            <RadioButton GroupName="obcat" Content="{Binding TabItems}" IsChecked="True"
+                                         Command="{Binding SetActiveCategoryCommand}" CommandParameter="0"/>
+                            <RadioButton GroupName="obcat" Content="{Binding TabOutfits}"
+                                         Command="{Binding SetActiveCategoryCommand}" CommandParameter="1"/>
+                            <RadioButton GroupName="obcat" Content="{Binding TabEffects}"
+                                         Command="{Binding SetActiveCategoryCommand}" CommandParameter="2"/>
+                            <RadioButton GroupName="obcat" Content="{Binding TabMissiles}"
+                                         Command="{Binding SetActiveCategoryCommand}" CommandParameter="3"/>
+                        </WrapPanel>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="#0C1423" BorderBrush="#1E293B" BorderThickness="0,0,0,1" Padding="7">
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="5">
+                            <Button Grid.Column="0" Content="＋ Nowy" Command="{Binding NewThingCommand}"
+                                    IsEnabled="{Binding HasLoadedDat}"
+                                    ToolTip.Tip="Dodaje pusty obiekt na końcu aktywnej kategorii."/>
+                            <Button Grid.Column="1" Content="⧉ Duplikuj" Command="{Binding DuplicateSelectedThingsCommand}"
+                                    IsEnabled="{Binding HasSelectedThings}"
+                                    ToolTip.Tip="Kopiuje zaznaczone obiekty razem z flagami, układem i sprite ID."/>
+                            <Button Grid.Column="2" Content="− Usuń" Click="DeleteObjects_Click"
+                                    IsEnabled="{Binding HasSelectedThings}"
+                                    ToolTip.Tip="Usuwa zaznaczone obiekty po potwierdzeniu. DAT wymaga ciągłych ID."/>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="8" ColumnSpacing="5">
+                        <TextBox Grid.Column="0" Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Szukaj ID lub flagi..."/>
+                        <Button Grid.Column="1" Content="×" Classes="icon-button" Command="{Binding ClearSearchCommand}"
+                                ToolTip.Tip="Wyczyść wyszukiwanie."/>
+                    </Grid>
+
+                    <ListBox Grid.Row="3" ItemsSource="{Binding Things}" SelectedItem="{Binding SelectedThing, Mode=TwoWay}"
+                             SelectionMode="Multiple" SelectionChanged="ThingList_SelectionChanged"
+                             Background="Transparent" Margin="5,0"
+                             ToolTip.Tip="Przytrzymaj Ctrl, aby zaznaczyć kilka obiektów; Shift zaznacza zakres.">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LegacyThingListItem">
+                                <Grid ColumnDefinitions="46,Auto,*" Height="52" Margin="3,2" ColumnSpacing="8">
+                                    <Border Grid.Column="0" Background="#050A12" BorderBrush="#2B3B55" BorderThickness="1" CornerRadius="4" Padding="3">
+                                        <Image Source="{Binding Thumbnail}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding Id}" FontWeight="SemiBold" VerticalAlignment="Center" MinWidth="42"/>
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding Category}" Classes="subtle" FontSize="10"/>
+                                        <TextBlock Text="{Binding Flags}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Grid.Row="4" Background="#111827" BorderBrush="#1E293B" BorderThickness="0,1,0,0" Padding="7">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="4">
+                            <Button Grid.Column="0" Content="|◀" Classes="icon-button" Command="{Binding FirstThingCommand}" ToolTip.Tip="Pierwszy obiekt"/>
+                            <Button Grid.Column="1" Content="◀" Classes="icon-button" Command="{Binding PreviousThingCommand}" ToolTip.Tip="Poprzedni obiekt"/>
+                            <TextBlock Grid.Column="2" Text="{Binding ObjectPosition}" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="muted"/>
+                            <Button Grid.Column="3" Content="▶" Classes="icon-button" Command="{Binding NextThingCommand}" ToolTip.Tip="Następny obiekt"/>
+                            <Button Grid.Column="4" Content="▶|" Classes="icon-button" Command="{Binding LastThingCommand}" ToolTip.Tip="Ostatni obiekt"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Centralny edytor -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="10">
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="3,0,3,7">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{Binding CurrentObjectTitle}" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="Zmiany są wykonywane w pamięci; użyj Zapisz Tibia.dat, aby zapisać plik." Classes="muted" FontSize="10"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding PreviewInfo}" Classes="muted" VerticalAlignment="Center"/>
+                </Grid>
+
+                <TabControl Grid.Row="1">
+                    <TabItem Header="Tekstura">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="8" Spacing="10">
+                                <Border Classes="app-panel" Padding="9" IsVisible="{Binding CanEditFrameGroups}">
+                                    <Grid ColumnDefinitions="Auto,190,Auto,Auto,Auto,*" ColumnSpacing="7">
+                                        <TextBlock Grid.Column="0" Text="Grupa klatek:" Classes="muted" VerticalAlignment="Center"/>
+                                        <ComboBox Grid.Column="1" ItemsSource="{Binding FrameGroups}" SelectedIndex="{Binding SelectedGroup, Mode=TwoWay}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:LegacyFrameGroupListItem">
+                                                    <TextBlock Text="{Binding DisplayName}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Button Grid.Column="2" Content="+ Grupa" Command="{Binding AddFrameGroupCommand}" IsEnabled="{Binding CanEditFrameGroups}"/>
+                                        <Button Grid.Column="3" Content="Usuń grupę" Command="{Binding RemoveFrameGroupCommand}" IsEnabled="{Binding CanRemoveFrameGroup}"/>
+                                        <TextBlock Grid.Column="4" Text="Typ:" Classes="muted" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        <ComboBox Grid.Column="5" SelectedIndex="{Binding CurrentGroupType, Mode=TwoWay}"
+                                                  MaxWidth="180" HorizontalAlignment="Left"
+                                                  IsEnabled="{Binding CanEditFrameGroups}"
+                                                  ToolTip.Tip="Typ grupy jest zapisany tylko w klientach obsługujących osobne grupy Idle i Walking.">
+                                            <ComboBoxItem Content="Idle / bezczynność"/>
+                                            <ComboBoxItem Content="Walking / ruch"/>
+                                        </ComboBox>
+                                    </Grid>
+                                </Border>
+
+                                <Grid ColumnDefinitions="Auto,*,230" ColumnSpacing="10" MinHeight="360">
+                                    <Border Grid.Column="0" Classes="app-panel" Padding="10" Width="190"
+                                            IsVisible="{Binding ShowDirectionSelector}">
+                                        <StackPanel Spacing="9">
+                                            <TextBlock Text="Sprite Direction" Classes="section-title"/>
+                                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,Auto,Auto" HorizontalAlignment="Center">
+                                                <ToggleButton Grid.Row="0" Grid.Column="0" Classes="direction-button" IsChecked="{Binding IsNorthWest, Mode=TwoWay}" IsVisible="{Binding IsMissileCategory}" ToolTip.Tip="North west">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M14,14 L2,2 M2,2 L8,2 M2,2 L2,8"/>
+                                                </ToggleButton>
+                                                <ToggleButton Grid.Row="0" Grid.Column="1" Classes="direction-button" IsChecked="{Binding IsNorth, Mode=TwoWay}" ToolTip.Tip="North">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M8,15 L8,2 M8,2 L3,7 M8,2 L13,7"/>
+                                                </ToggleButton>
+                                                <ToggleButton Grid.Row="0" Grid.Column="2" Classes="direction-button" IsChecked="{Binding IsNorthEast, Mode=TwoWay}" IsVisible="{Binding IsMissileCategory}" ToolTip.Tip="North east">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M2,14 L14,2 M14,2 L8,2 M14,2 L14,8"/>
+                                                </ToggleButton>
+                                                <ToggleButton Grid.Row="1" Grid.Column="0" Classes="direction-button" IsChecked="{Binding IsWest, Mode=TwoWay}" ToolTip.Tip="West">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M15,8 L2,8 M2,8 L7,3 M2,8 L7,13"/>
+                                                </ToggleButton>
+                                                <Border Grid.Row="1" Grid.Column="1" Width="44" Height="38" Background="#070B12" BorderBrush="#26344B" BorderThickness="1"/>
+                                                <ToggleButton Grid.Row="1" Grid.Column="2" Classes="direction-button" IsChecked="{Binding IsEast, Mode=TwoWay}" ToolTip.Tip="East">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M2,8 L15,8 M15,8 L10,3 M15,8 L10,13"/>
+                                                </ToggleButton>
+                                                <ToggleButton Grid.Row="2" Grid.Column="0" Classes="direction-button" IsChecked="{Binding IsSouthWest, Mode=TwoWay}" IsVisible="{Binding IsMissileCategory}" ToolTip.Tip="South west">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M14,2 L2,14 M2,14 L8,14 M2,14 L2,8"/>
+                                                </ToggleButton>
+                                                <ToggleButton Grid.Row="2" Grid.Column="1" Classes="direction-button" IsChecked="{Binding IsSouth, Mode=TwoWay}" ToolTip.Tip="South">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M8,2 L8,15 M8,15 L3,10 M8,15 L13,10"/>
+                                                </ToggleButton>
+                                                <ToggleButton Grid.Row="2" Grid.Column="2" Classes="direction-button" IsChecked="{Binding IsSouthEast, Mode=TwoWay}" IsVisible="{Binding IsMissileCategory}" ToolTip.Tip="South east">
+                                                    <Path Width="16" Height="16" Stretch="Uniform" Stroke="#BAE6FD" StrokeThickness="1.7" Data="M2,2 L14,14 M14,14 L8,14 M14,14 L14,8"/>
+                                                </ToggleButton>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Column="1" Classes="texture-stage" Padding="12">
+                                        <Grid RowDefinitions="Auto,*,Auto,Auto">
+                                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                                                <StackPanel Grid.Column="0" Spacing="2">
+                                                    <TextBlock Text="Siatka montażowa 32×32" Classes="section-title"/>
+                                                    <TextBlock Text="Przeciągnij sprite z biblioteki na wybrany kafelek obiektu."
+                                                               Classes="muted" FontSize="10"/>
+                                                    <TextBlock Text="{Binding SelectedSpriteSlot.Details}"
+                                                               Foreground="#7DD3FC" FontSize="10"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="Wyczyść kafelek"
+                                                        Command="{Binding ClearSpriteSlotCommand}"/>
+                                            </Grid>
+                                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                                <Grid MinHeight="260" MinWidth="300">
+                                                    <Grid Width="{Binding PreviewDisplayWidth}" Height="{Binding PreviewDisplayHeight}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <Image Source="{Binding PreviewImage}"
+                                                               Stretch="Fill"
+                                                               RenderOptions.BitmapInterpolationMode="None"/>
+                                                        <ItemsControl ItemsSource="{Binding SpriteSlots}"
+                                                                      IsVisible="{Binding ShowGrid}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <UniformGrid Columns="{Binding TextureWidth}"
+                                                                                 Rows="{Binding TextureHeight}"/>
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:LegacySpriteSlotItem">
+                                                                    <Border Classes="sprite-grid-cell"
+                                                                            Classes.selected="{Binding IsSelected}"
+                                                                            DragDrop.AllowDrop="True"
+                                                                            PointerPressed="SpriteGridCell_PointerPressed"
+                                                                            ToolTip.Tip="{Binding Details}">
+                                                                        <TextBlock Text="+" IsVisible="{Binding IsEmpty}"
+                                                                                   Foreground="#7DD3FC" Opacity="0.65"
+                                                                                   FontSize="22" FontWeight="SemiBold"
+                                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Grid>
+                                                </Grid>
+                                            </ScrollViewer>
+                                            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,9,0,0" ColumnSpacing="8">
+                                                <TextBlock Grid.Column="0" Text="Zoom" Classes="muted" VerticalAlignment="Center"/>
+                                                <Slider Grid.Column="1" Minimum="1" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Zoom, Mode=TwoWay}"/>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                                    <CheckBox Content="Show Crop Size" IsChecked="{Binding ShowCropSize, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Show Grid" IsChecked="{Binding ShowGrid, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            <WrapPanel Grid.Row="3" Margin="0,8,0,0" Orientation="Horizontal" ItemSpacing="14" LineSpacing="6">
+                                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding ShowAddonSelector}">
+                                                    <TextBlock Text="Addons" Classes="muted" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Width="86" Value="{Binding Addon, Mode=TwoWay}" Minimum="0" Maximum="{Binding AddonMaximum}"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding ShowMountSelector}">
+                                                    <TextBlock Text="Mount" Classes="muted" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Width="86" Value="{Binding PatternZ, Mode=TwoWay}" Minimum="0" Maximum="{Binding PatternZMaximum}"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding ShowLayerSelector}">
+                                                    <TextBlock Text="Layer" Classes="muted" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Width="86" Value="{Binding EditedLayerNumber, Mode=TwoWay}" Minimum="1" Maximum="{Binding LayerCount}"/>
+                                                </StackPanel>
+                                            </WrapPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Column="2" Classes="app-panel" Padding="10" IsVisible="{Binding ShowAnimationPanel}">
+                                        <StackPanel Spacing="8">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7">
+                                                <TextBlock Grid.Column="0" Text="Animations" Classes="section-title" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding AnimationPosition}" Classes="muted" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="{Binding PlayButtonText}" Command="{Binding ToggleAnimationCommand}"/>
+                                            </Grid>
+                                            <Slider Minimum="0" Maximum="{Binding FrameMaximum}" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Frame, Mode=TwoWay}"/>
+
+                                            <StackPanel Spacing="7" IsVisible="{Binding ShowImprovedAnimationSettings}">
+                                                <Grid ColumnDefinitions="*,92" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="8">
+                                                    <TextBlock Grid.Row="0" Text="Min. duration (ms)" Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                                    <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding FrameDurationMin, Mode=TwoWay}" Minimum="0" Maximum="60000"/>
+                                                    <TextBlock Grid.Row="1" Text="Max. duration (ms)" Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding FrameDurationMax, Mode=TwoWay}" Minimum="0" Maximum="60000"/>
+                                                    <TextBlock Grid.Row="2" Text="Animation mode" Classes="muted" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding AnimationMode, Mode=TwoWay}" Minimum="0" Maximum="1"/>
+                                                    <TextBlock Grid.Row="3" Text="Loop count" Classes="muted" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding AnimationLoopCount, Mode=TwoWay}" Minimum="-1" Maximum="100000"/>
+                                                    <TextBlock Grid.Row="4" Text="Start frame" Classes="muted" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding AnimationStartFrame, Mode=TwoWay}" Minimum="-1" Maximum="127"/>
+                                                </Grid>
+                                                <Button Content="Apply duration to all frames" Command="{Binding ApplyDurationToAllCommand}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <Border Classes="app-panel" Padding="10" IsVisible="{Binding SupportsBones}" IsEnabled="{Binding CanPersistBones}"
+                                        ToolTip.Tip="Object Builder pokazuje tę sekcję we wszystkich wersjach, ale ten format DAT zapisuje ją dopiero od 7.80.">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,110,Auto,110" ColumnSpacing="8">
+                                        <CheckBox Grid.Column="0" Content="Punkty zaczepienia (bones)" IsChecked="{Binding HasBones, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="Offset X bieżącego kierunku" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="3" Value="{Binding BoneOffsetX, Mode=TwoWay}" Minimum="-32768" Maximum="32767" IsEnabled="{Binding HasBones}"/>
+                                        <TextBlock Grid.Column="4" Text="Offset Y bieżącego kierunku" Classes="muted" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="5" Value="{Binding BoneOffsetY, Mode=TwoWay}" Minimum="-32768" Maximum="32767" IsEnabled="{Binding HasBones}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="10">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Układ tekstury / Patterns" Classes="section-title"/>
+                                        <TextBlock Text="Zmiana wartości automatycznie przebudowuje tablicę slotów i zachowuje wspólne współrzędne." Classes="muted" FontSize="10"/>
+                                        <Grid ColumnDefinitions="Auto,80,Auto,80,Auto,80,Auto,80" RowDefinitions="Auto,Auto" ColumnSpacing="7" RowSpacing="6">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Width" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding TextureWidth, Mode=TwoWay}" Minimum="1" Maximum="8"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Height" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding TextureHeight, Mode=TwoWay}" Minimum="1" Maximum="8"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="4" Text="Crop Size" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="0" Grid.Column="5" Value="{Binding TextureExactSize, Mode=TwoWay}" Minimum="0" Maximum="255"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="6" Text="Layers" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="0" Grid.Column="7" Value="{Binding TextureLayers, Mode=TwoWay}" Minimum="1" Maximum="8"/>
+
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Pattern X" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding TexturePatternX, Mode=TwoWay}" Minimum="1" Maximum="16"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="2" Text="Pattern Y" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding TexturePatternY, Mode=TwoWay}" Minimum="1" Maximum="16"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="4" Text="Pattern Z" Classes="muted" VerticalAlignment="Center" IsVisible="{Binding SupportsPatternZ}"/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="5" Value="{Binding TexturePatternZ, Mode=TwoWay}" Minimum="1" Maximum="16" IsVisible="{Binding SupportsPatternZ}"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="6" Text="Animations" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="7" Value="{Binding TextureFrames, Mode=TwoWay}" Minimum="1" Maximum="255"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <TabItem Header="Właściwości">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="8" Spacing="10" IsEnabled="{Binding HasSelectedThing}" IsVisible="{Binding ShowPropertiesSection}">
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding IsItemCategory}">
+                                    <Grid ColumnDefinitions="Auto,*,120" ColumnSpacing="10">
+                                        <CheckBox x:Name="IsGroundCheckBox" Grid.Column="0" Content="Is Ground" IsChecked="{Binding SelectedThing.Source.IsGround, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="1" Text="Ground Speed" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                   IsEnabled="{Binding IsChecked, ElementName=IsGroundCheckBox}"/>
+                                        <NumericUpDown Grid.Column="2" Value="{Binding SelectedThing.Source.GroundSpeed, Mode=TwoWay}" Minimum="0" Maximum="1000"
+                                                       IsEnabled="{Binding IsChecked, ElementName=IsGroundCheckBox}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox x:Name="HasLightCheckBox" Content="Has Light" IsChecked="{Binding SelectedThing.Source.HasLight, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <Grid ColumnDefinitions="*,220,*,120" ColumnSpacing="9" IsEnabled="{Binding IsChecked, ElementName=HasLightCheckBox}">
+                                            <TextBlock Grid.Column="0" Text="Light Color" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                                <ComboBox ItemsSource="{Binding TibiaColorOptions}"
+                                                          SelectedIndex="{Binding LightColorSelectionIndex, Mode=TwoWay}"
+                                                          Width="112" MaxDropDownHeight="340">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:LegacyTibiaColorOption">
+                                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                                <Border Width="22" Height="15" Background="{Binding Brush}"
+                                                                        BorderBrush="#64748B" BorderThickness="1"/>
+                                                                <TextBlock Text="{Binding Id}"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <NumericUpDown Value="{Binding LightColorSelectionIndex, Mode=TwoWay}" Minimum="0" Maximum="215" Width="98"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="Light Intensity" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            <NumericUpDown Grid.Column="3" Value="{Binding SelectedThing.Source.LightLevel, Mode=TwoWay}" Minimum="0" Maximum="10"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding IsItemCategory}">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox x:Name="AutomapCheckBox" Content="Automap" IsChecked="{Binding SelectedThing.Source.HasMiniMapColor, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <Grid ColumnDefinitions="*,220" ColumnSpacing="10" IsEnabled="{Binding IsChecked, ElementName=AutomapCheckBox}">
+                                            <TextBlock Grid.Column="0" Text="Automap Color" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                                <ComboBox ItemsSource="{Binding TibiaColorOptions}"
+                                                          SelectedIndex="{Binding AutomapColorSelectionIndex, Mode=TwoWay}"
+                                                          Width="112" MaxDropDownHeight="340">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:LegacyTibiaColorOption">
+                                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                                <Border Width="22" Height="15" Background="{Binding Brush}"
+                                                                        BorderBrush="#64748B" BorderThickness="1"/>
+                                                                <TextBlock Text="{Binding Id}"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <NumericUpDown Value="{Binding AutomapColorSelectionIndex, Mode=TwoWay}" Minimum="0" Maximum="215" Width="98"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox x:Name="HasOffsetCheckBox" Content="Has Offset" IsChecked="{Binding SelectedThing.Source.HasOffset, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <Grid ColumnDefinitions="*,120,*,120" ColumnSpacing="9" IsEnabled="{Binding IsChecked, ElementName=HasOffsetCheckBox}">
+                                            <TextBlock Grid.Column="0" Text="Offset X" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding SelectedThing.Source.OffsetX, Mode=TwoWay}" Minimum="{Binding ObjectOffsetMinimum}" Maximum="{Binding ObjectOffsetMaximum}"/>
+                                            <TextBlock Grid.Column="2" Text="Offset Y" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            <NumericUpDown Grid.Column="3" Value="{Binding SelectedThing.Source.OffsetY, Mode=TwoWay}" Minimum="{Binding ObjectOffsetMinimum}" Maximum="{Binding ObjectOffsetMaximum}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding IsItemCategory}">
+                                    <Grid ColumnDefinitions="Auto,*,120" ColumnSpacing="10">
+                                        <CheckBox x:Name="HasElevationCheckBox" Grid.Column="0" Content="Has Elevation" IsChecked="{Binding SelectedThing.Source.HasElevation, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="1" Text="Elevation" Classes="muted" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                   IsEnabled="{Binding IsChecked, ElementName=HasElevationCheckBox}"/>
+                                        <NumericUpDown Grid.Column="2" Value="{Binding SelectedThing.Source.Elevation, Mode=TwoWay}" Minimum="0" Maximum="32"
+                                                       IsEnabled="{Binding IsChecked, ElementName=HasElevationCheckBox}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding IsItemCategory}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Write / Read" Classes="section-title"/>
+                                        <Grid ColumnDefinitions="*,Auto,120" RowDefinitions="Auto,Auto" RowSpacing="7" ColumnSpacing="9">
+                                            <CheckBox x:Name="WritableCheckBox" Grid.Row="0" Grid.Column="0" Content="Writable" IsChecked="{Binding SelectedThing.Source.IsWritable, Mode=TwoWay}"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Max Length" Classes="muted" VerticalAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=WritableCheckBox}"/>
+                                            <NumericUpDown Grid.Row="0" Grid.Column="2" Value="{Binding SelectedThing.Source.MaxReadWriteChars, Mode=TwoWay}" Minimum="0" Maximum="65535" IsEnabled="{Binding IsChecked, ElementName=WritableCheckBox}"/>
+                                            <CheckBox x:Name="WritableOnceCheckBox" Grid.Row="1" Grid.Column="0" Content="Writable Once" IsChecked="{Binding SelectedThing.Source.IsWritableOnce, Mode=TwoWay}"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="Max Length" Classes="muted" VerticalAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=WritableOnceCheckBox}"/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding SelectedThing.Source.MaxReadChars, Mode=TwoWay}" Minimum="0" Maximum="65535" IsEnabled="{Binding IsChecked, ElementName=WritableOnceCheckBox}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding IsItemCategory}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,260" ColumnSpacing="10">
+                                        <CheckBox x:Name="LensHelpCheckBox" Grid.Column="0" Content="Lens Help" IsChecked="{Binding SelectedThing.Source.HasLensHelp, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="Type" Classes="muted" VerticalAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=LensHelpCheckBox}"/>
+                                        <ComboBox Grid.Column="3" ItemsSource="{Binding LensHelpTypeLabels}" SelectedIndex="{Binding LensHelpSelectionIndex, Mode=TwoWay}" IsEnabled="{Binding IsChecked, ElementName=LensHelpCheckBox}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding ShowFlagsSection}">
+                                    <StackPanel Spacing="9">
+                                        <TextBlock Text="Flags" Classes="section-title"/>
+                                        <StackPanel Spacing="9" IsVisible="{Binding IsItemCategory}">
+                                            <WrapPanel Orientation="Horizontal" ItemSpacing="18" LineSpacing="6">
+                                                <RadioButton GroupName="renderOrder" Content="Common" IsChecked="{Binding IsCommonRenderOrder, Mode=TwoWay}"/>
+                                                <RadioButton GroupName="renderOrder" Content="Ground Border" IsChecked="{Binding IsGroundBorderRenderOrder, Mode=TwoWay}" IsVisible="{Binding SupportsGroundBorder}"/>
+                                                <RadioButton GroupName="renderOrder" Content="Bottom" IsChecked="{Binding IsBottomRenderOrder, Mode=TwoWay}"/>
+                                                <RadioButton GroupName="renderOrder" Content="Top" IsChecked="{Binding IsTopRenderOrder, Mode=TwoWay}"/>
+                                            </WrapPanel>
+                                            <Grid ColumnDefinitions="*,*" ColumnSpacing="28">
+                                                <StackPanel Grid.Column="0" Spacing="6">
+                                                    <CheckBox Content="Container" IsChecked="{Binding SelectedThing.Source.IsContainer, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Stackable" IsChecked="{Binding SelectedThing.Source.IsStackable, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Force Use" IsChecked="{Binding SelectedThing.Source.ForceUse, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Multi Use" IsChecked="{Binding SelectedThing.Source.IsMultiUse, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Fluid Container" IsChecked="{Binding SelectedThing.Source.IsFluidContainer, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Fluid" IsChecked="{Binding SelectedThing.Source.IsFluid, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Unpassable" IsChecked="{Binding SelectedThing.Source.IsUnpassable, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Unmovable" IsChecked="{Binding SelectedThing.Source.IsUnmoveable, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Block Missile" IsChecked="{Binding SelectedThing.Source.BlockMissile, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Block Pathfinder" IsChecked="{Binding SelectedThing.Source.BlockPathfinder, Mode=TwoWay}"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Spacing="6">
+                                                    <CheckBox Content="No Move Animation" IsChecked="{Binding SelectedThing.Source.NoMoveAnimation, Mode=TwoWay}" IsVisible="{Binding SupportsNoMoveAnimation}"/>
+                                                    <CheckBox Content="Pickupable" IsChecked="{Binding SelectedThing.Source.IsPickupable, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Hangable" IsChecked="{Binding SelectedThing.Source.IsHangable, Mode=TwoWay}" IsVisible="{Binding SupportsWallHooks}"/>
+                                                    <CheckBox Content="Hook East" IsChecked="{Binding SelectedThing.Source.IsHorizontal, Mode=TwoWay}" IsVisible="{Binding SupportsWallHooks}"/>
+                                                    <CheckBox Content="Hook South" IsChecked="{Binding SelectedThing.Source.IsVertical, Mode=TwoWay}" IsVisible="{Binding SupportsWallHooks}"/>
+                                                    <CheckBox Content="Rotatable" IsChecked="{Binding SelectedThing.Source.IsRotatable, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Don't Hide" IsChecked="{Binding SelectedThing.Source.DontHide, Mode=TwoWay}" IsVisible="{Binding SupportsDontHide}"/>
+                                                    <CheckBox Content="Translucent" IsChecked="{Binding SelectedThing.Source.IsTranslucent, Mode=TwoWay}" IsVisible="{Binding SupportsTranslucent}"/>
+                                                    <CheckBox Content="Lying Object" IsChecked="{Binding SelectedThing.Source.IsLyingObject, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Full Ground" IsChecked="{Binding SelectedThing.Source.IsFullGround, Mode=TwoWay}"/>
+                                                    <CheckBox Content="Ignore Look" IsChecked="{Binding SelectedThing.Source.IgnoreLook, Mode=TwoWay}" IsVisible="{Binding SupportsDontHide}"/>
+                                                    <CheckBox Content="Useable" IsChecked="{Binding SelectedThing.Source.IsUsable, Mode=TwoWay}" IsVisible="{Binding SupportsUseable}"/>
+                                                    <CheckBox Content="Has Charges" IsChecked="{Binding SelectedThing.Source.HasCharges, Mode=TwoWay}" IsVisible="{Binding SupportsCharges}"/>
+                                                    <CheckBox Content="Floor Change" IsChecked="{Binding SelectedThing.Source.FloorChange, Mode=TwoWay}" IsVisible="{Binding SupportsFloorChange}"/>
+                                                    <CheckBox Content="Wrappable" IsChecked="{Binding SelectedThing.Source.IsWrappable, Mode=TwoWay}" IsVisible="{Binding SupportsWrappable}" IsEnabled="{Binding CanPersistWrappable}"
+                                                              ToolTip.Tip="Pole obecne w interfejsie Object Buildera; w tym wariancie DAT jego writer go nie zapisuje."/>
+                                                    <CheckBox Content="Unwrappable" IsChecked="{Binding SelectedThing.Source.IsUnwrappable, Mode=TwoWay}" IsVisible="{Binding SupportsWrappable}" IsEnabled="{Binding CanPersistWrappable}"
+                                                              ToolTip.Tip="Pole obecne w interfejsie Object Buildera; w tym wariancie DAT jego writer go nie zapisuje."/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                        <CheckBox Content="Animate Always" IsChecked="{Binding SelectedThing.Source.AnimateAlways, Mode=TwoWay}" IsVisible="{Binding IsOutfitCategory}"/>
+                                        <CheckBox Content="Top effect" IsChecked="{Binding SelectedThing.Source.IsTopEffect, Mode=TwoWay}" IsVisible="{Binding SupportsTopEffect}" IsEnabled="{Binding CanPersistTopEffect}"
+                                                  ToolTip.Tip="Pole obecne w interfejsie Object Buildera; w tym wariancie DAT jego writer go nie zapisuje."/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding SupportsEquip}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,260" ColumnSpacing="10">
+                                        <CheckBox x:Name="EquipCheckBox" Grid.Column="0" Content="Equip" IsChecked="{Binding SelectedThing.Source.HasCloth, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="Slot" Classes="muted" VerticalAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=EquipCheckBox}"/>
+                                        <ComboBox Grid.Column="3" ItemsSource="{Binding EquipSlotLabels}" SelectedIndex="{Binding EquipSlotSelectionIndex, Mode=TwoWay}" IsEnabled="{Binding IsChecked, ElementName=EquipCheckBox}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding SupportsDefaultAction}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,260" ColumnSpacing="10">
+                                        <CheckBox x:Name="HasActionCheckBox" Grid.Column="0" Content="Has Action" IsChecked="{Binding SelectedThing.Source.HasDefaultAction, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="Action Type" Classes="muted" VerticalAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=HasActionCheckBox}"/>
+                                        <ComboBox Grid.Column="3" ItemsSource="{Binding DefaultActionLabels}" SelectedIndex="{Binding DefaultActionSelectionIndex, Mode=TwoWay}" IsEnabled="{Binding IsChecked, ElementName=HasActionCheckBox}"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Classes="app-panel" Padding="12" IsVisible="{Binding SupportsMarket}">
+                                    <StackPanel Spacing="8">
+                                        <CheckBox x:Name="MarketCheckBox" Content="Market" IsChecked="{Binding SelectedThing.Source.HasMarketInfo, Mode=TwoWay}" FontWeight="SemiBold"/>
+                                        <Grid ColumnDefinitions="Auto,180,Auto,120,Auto,120" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="7"
+                                              IsEnabled="{Binding IsChecked, ElementName=MarketCheckBox}">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Category" Classes="muted" VerticalAlignment="Center"/>
+                                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding LegacyMarketCategoryLabels}" SelectedIndex="{Binding MarketCategorySelectionIndex, Mode=TwoWay}"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Trade As" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding SelectedThing.Source.MarketTradeAs, Mode=TwoWay}" Minimum="0" Maximum="65535"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="4" Text="Show As" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="0" Grid.Column="5" Value="{Binding SelectedThing.Source.MarketShowAs, Mode=TwoWay}" Minimum="0" Maximum="65535"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Name" Classes="muted" VerticalAlignment="Center"/>
+                                            <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding SelectedThing.Source.MarketName, Mode=TwoWay}"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="4" Text="Level" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="5" Value="{Binding SelectedThing.Source.MarketRestrictLevel, Mode=TwoWay}" Minimum="0" Maximum="65535"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Vocation" Classes="muted" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding SelectedThing.Source.MarketRestrictProfession, Mode=TwoWay}" Minimum="0" Maximum="65535"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Button Content="Apply object properties" Command="{Binding ApplyPropertiesCommand}" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+
+            <!-- Prawa biblioteka sprite'ów -->
+            <Border x:Name="SpriteLibraryDropSurface" Grid.Column="2" Background="#090F1C" BorderBrush="#1E293B" BorderThickness="1,0,0,0"
+                    DragDrop.AllowDrop="True"
+                    ToolTip.Tip="Możesz upuścić tutaj pliki PNG, BMP, JPG lub JPEG.">
+                <Grid RowDefinitions="Auto,*">
+                    <Border Grid.Row="0" Background="#111827" Padding="10,8">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Biblioteka sprite'ów" Classes="section-title"/>
+                            <TextBlock Text="Tibia.spr · przeciąganie ID i import plików" Classes="muted" FontSize="10"/>
+                        </StackPanel>
+                    </Border>
+                    <TabControl Grid.Row="1" SelectedIndex="{Binding SpritePanelTab, Mode=TwoWay}" Padding="0">
+                        <TabItem Header="Biblioteka">
+                            <Grid RowDefinitions="Auto,*,Auto,Auto">
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="8" ColumnSpacing="5">
+                                    <NumericUpDown Grid.Column="0" Value="{Binding SpriteJumpId, Mode=TwoWay}" Minimum="1" Maximum="{Binding MaxSpriteId}"/>
+                                    <Button Grid.Column="1" Content="Idź do ID" Command="{Binding JumpToSpriteCommand}"/>
+                                </Grid>
+                                <ListBox Grid.Row="1" ItemsSource="{Binding AvailableSprites}" SelectedItem="{Binding SelectedAvailableSprite, Mode=TwoWay}"
+                                         Background="Transparent" Margin="5">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:LegacySpriteListItem">
+                                            <Border Width="60" Height="68" Margin="2" Background="#0C1322" BorderBrush="#26344B" BorderThickness="1" CornerRadius="4" Padding="3"
+                                                    PointerPressed="AvailableSpriteItem_PointerPressed"
+                                                    ToolTip.Tip="Przytrzymaj lewy przycisk i przeciągnij na kafelek siatki 32×32.">
+                                                <Grid RowDefinitions="*,Auto">
+                                                    <Image Grid.Row="0" Source="{Binding Thumbnail}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None"/>
+                                                    <TextBlock Grid.Row="1" Text="{Binding Id}" HorizontalAlignment="Center" FontSize="9"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="8,3" ColumnSpacing="5">
+                                    <Button Grid.Column="0" Content="◀" Classes="icon-button" Command="{Binding PreviousSpritePageCommand}"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SpritePageSummary}" Classes="muted" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="2" Content="▶" Classes="icon-button" Command="{Binding NextSpritePageCommand}"/>
+                                </Grid>
+                                <Border Grid.Row="3" Background="#111827" BorderBrush="#1E293B" BorderThickness="0,1,0,0" Padding="8">
+                                    <StackPanel Spacing="6">
+                                        <Button Content="Przypisz do zaznaczonego slotu" Command="{Binding AssignSpriteCommand}"/>
+                                        <TextBlock Text="Przeciągnij sprite bezpośrednio na wybrany kafelek siatki 32×32. Możesz też zaznaczyć oba elementy i użyć przycisku."
+                                                   Classes="muted" TextWrapping="Wrap" FontSize="10"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Dodaj sprite'y">
+                            <Grid RowDefinitions="*,Auto" Margin="9">
+                                <Border Grid.Row="0" Background="#0C1628" BorderBrush="#38BDF8" BorderThickness="1"
+                                        CornerRadius="7" Padding="16" MinHeight="260">
+                                    <StackPanel VerticalAlignment="Center" Spacing="11">
+                                        <TextBlock Text="⇩" FontSize="38" Foreground="#38BDF8" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Upuść pliki sprite'ów tutaj" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="PNG, BMP, JPG lub JPEG. Obraz 32×32 tworzy jeden sprite. Większy obraz musi mieć wymiary będące wielokrotnością 32 i zostanie pocięty bez skalowania."
+                                                   Classes="muted" FontSize="11" TextWrapping="Wrap" TextAlignment="Center"/>
+                                        <TextBlock Text="Kolejność: od lewej do prawej, następnie od góry do dołu. Przezroczystość: kanał alfa albo dokładny kolor #FF00FF."
+                                                   Classes="subtle" FontSize="10" TextWrapping="Wrap" TextAlignment="Center"/>
+                                        <Button Content="Wybierz pliki…" Command="{Binding ImportSpriteFilesCommand}"
+                                                IsEnabled="{Binding HasLoadedSprites}" HorizontalAlignment="Center" MinWidth="150"/>
+                                        <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsImportingSprites}" Height="4"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Row="1" Background="#111827" BorderBrush="#1E293B" BorderThickness="1"
+                                        CornerRadius="5" Padding="9" Margin="0,8,0,0">
+                                    <TextBlock Text="{Binding SpriteImportSummary}" Classes="muted" FontSize="10" TextWrapping="Wrap"/>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="#020617" Padding="10,5" BorderBrush="#1E293B" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                <StackPanel Grid.Column="0" Spacing="1">
+                    <TextBlock Text="{Binding StatusText}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding DatPath}" Classes="subtle" FontSize="9" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding SprPath}" Classes="subtle" FontSize="9" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="DAT + SPR editor" Classes="subtle" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

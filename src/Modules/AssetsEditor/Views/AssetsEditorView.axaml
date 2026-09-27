@@ -1,0 +1,1318 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modules.AssetsEditor.ViewModels"
+             x:Class="Modules.AssetsEditor.Views.AssetsEditorView"
+             x:DataType="vm:AssetsEditorViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- ╔══════════════════════════════════════════════════════════════════════
+             ║  PASEK NARZĘDZI
+             ╚══════════════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="#0F172A" Padding="6,4"
+                BorderBrush="#1E293B" BorderThickness="0,0,0,1">
+            <WrapPanel Orientation="Horizontal" ItemSpacing="4">
+                <Button Content="Otwórz folder"
+                        Command="{Binding OpenFolderCommand}"
+                        ToolTip.Tip="Otwiera folder z plikami Tibii 12+: catalog-content.json, appearances.dat i arkusze sprite'ów."/>
+                <Button Content="Kompiluj"
+                        Command="{Binding CompileCommand}"
+                        ToolTip.Tip="Pełna kompilacja: backup *-bak + atomic write appearances.dat oraz catalog-content.json do załadowanego folderu."/>
+                <Button Content="Zapisz appearances.dat jako…"
+                        Command="{Binding SaveAppearancesAsCommand}"
+                        ToolTip.Tip="Zapisuje tylko appearances.dat do wybranej lokalizacji (bez backupu i catalogu)."/>
+                <Button Content="Eksport CSV"
+                        Command="{Binding ExportCsvCommand}"
+                        ToolTip.Tip="Eksportuje ID, kategorię, nazwę i pierwszy sprite do pliku CSV."/>
+                <Button Content="Eksport .aec"
+                        Command="{Binding ExportAecCommand}"
+                        ToolTip.Tip="Eksportuje obiekty zaznaczone Ctrl/Shift, ich sprite'y, offset i flagi do jednego .aec."/>
+                <Button Content="Import .aec"
+                        Command="{Binding ImportAecCommand}"
+                        ToolTip.Tip="Importuje obiekty, sprite'y, offset i flagi zapisane w jednym lub wielu kontenerach .aec."/>
+                <Button Content="Eksport OBD"
+                        Command="{Binding ExportObdCommand}"
+                        ToolTip.Tip="Eksportuje zaznaczone obiekty do Old Assets Editor jako OBD v2; duże sprite'y dzieli na kafle 32×32, zachowuje offset i pomija flagi."/>
+                <Button Content="Import OBD"
+                        Command="{Binding ImportObdCommand}"
+                        ToolTip.Tip="Importuje z OBD obiekt, sprite'y i offset; kafle 32×32 scala do nowego formatu, pozostałe flagi pomija."/>
+                <TextBlock Text="{Binding ExportListSummary}" VerticalAlignment="Center" Foreground="#94A3B8" Margin="4,0"/>
+                <Button Content="Nowy obiekt"
+                        Command="{Binding NewAppearanceCommand}"
+                        ToolTip.Tip="Dodaje nowy pusty obiekt w aktywnej kategorii."/>
+                <Button Content="Duplikuj"
+                        Command="{Binding DuplicateAppearanceCommand}"
+                        ToolTip.Tip="Tworzy kopię aktualnie wybranego obiektu z nowym ID."/>
+                <Button Content="Usuń"
+                        Command="{Binding DeleteAppearanceCommand}"
+                        ToolTip.Tip="Usuwa aktualnie wybrany obiekt z aktywnej kategorii."/>
+                <Border Background="#334155" Width="1" Margin="4,2" VerticalAlignment="Stretch"/>
+                <TextBlock Text="Szukaj:" VerticalAlignment="Center" Foreground="#94A3B8" Margin="0,0,4,0"/>
+                <TextBox Text="{Binding Filter}" Width="180" PlaceholderText="ID lub nazwa..."
+                         ToolTip.Tip="Filtruj listę po numerze ID lub nazwie"/>
+                <Border Background="#334155" Width="1" Margin="4,2" VerticalAlignment="Stretch"/>
+                <TextBlock Text="Preset:" VerticalAlignment="Center" Foreground="#94A3B8" Margin="0,0,4,0"/>
+                <ComboBox ItemsSource="{Binding AvailablePresets}"
+                          SelectedItem="{Binding SelectedPreset}"
+                          Width="160"
+                          ToolTip.Tip="Preset serwera — ustawia limity pól (shift, poziom, itp.)">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Border Background="#334155" Width="1" Margin="4,2" VerticalAlignment="Stretch"/>
+                <RadioButton GroupName="cat" Content="{Binding TabItems}"
+                             IsChecked="{Binding IsItemsTab, Mode=OneWay}"
+                             Command="{Binding SetActiveCategoryCommand}" CommandParameter="0"/>
+                <RadioButton GroupName="cat" Content="{Binding TabOutfits}"
+                             IsChecked="{Binding IsOutfitsTab, Mode=OneWay}"
+                             Command="{Binding SetActiveCategoryCommand}" CommandParameter="1"/>
+                <RadioButton GroupName="cat" Content="{Binding TabEffects}"
+                             IsChecked="{Binding IsEffectsTab, Mode=OneWay}"
+                             Command="{Binding SetActiveCategoryCommand}" CommandParameter="2"/>
+                <RadioButton GroupName="cat" Content="{Binding TabMissiles}"
+                             IsChecked="{Binding IsMissilesTab, Mode=OneWay}"
+                             Command="{Binding SetActiveCategoryCommand}" CommandParameter="3"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- ╔══════════════════════════════════════════════════════════════════════
+             ║  GŁÓWNY UKŁAD: 3 KOLUMNY  [lista | środek | sprite list]
+             ╚══════════════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="1" ColumnDefinitions="270,*,300">
+
+            <!-- ══════════════════════════════════════════════════════════════════
+                 LEWA KOLUMNA — lista obiektów
+                 ══════════════════════════════════════════════════════════════════ -->
+            <Border Grid.Column="0" BorderBrush="#1E293B" BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="Auto,*">
+                    <Border Grid.Row="0" Background="#111827" Padding="8,4">
+                        <TextBlock FontSize="11" Foreground="#94A3B8">
+                            <Run Text="Wyświetlono: "/>
+                            <Run Text="{Binding Things.Count}"/>
+                        </TextBlock>
+                    </Border>
+
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding Things}"
+                             SelectedItem="{Binding Selected, Mode=TwoWay}"
+                             SelectionMode="Multiple"
+                             SelectionChanged="ThingList_SelectionChanged"
+                             ToolTip.Tip="Ctrl zaznacza wiele obiektów, Shift zaznacza zakres. Import i eksport obsługują wiele obiektów."
+                             Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AppearanceListItem">
+                                <Grid ColumnDefinitions="38,*" Margin="3,2">
+                                    <Border Grid.Column="0" Background="#0F172A" CornerRadius="3"
+                                            Width="34" Height="34">
+                                        <Image Source="{Binding Thumbnail}"
+                                               Width="32" Height="32"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapInterpolationMode="None"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding DisplayName}"
+                                               VerticalAlignment="Center"
+                                               Margin="6,0,0,0" FontSize="12"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════════════════
+                 ŚRODKOWA KOLUMNA — TabControl
+                 ══════════════════════════════════════════════════════════════════ -->
+            <Grid Grid.Column="1">
+                <!-- Folder/ścieżka -->
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="#111827" Padding="6,4"
+                        BorderBrush="#1E293B" BorderThickness="0,0,0,1">
+                    <TextBlock FontSize="10" Foreground="#64748B"
+                               TextTrimming="CharacterEllipsis">
+                        <Run Text="Folder: "/>
+                        <Run Text="{Binding FolderPath, FallbackValue='(nie wczytano — kliknij Otwórz folder assetów)'}"/>
+                    </TextBlock>
+                </Border>
+
+                <!-- ─── Zakładki ────────────────────────────────────────────────── -->
+                <TabControl Grid.Row="1">
+
+                    <!-- ╔═══════════════════════════════════════════════════════════
+                         ║  PROPERTIES — wszystkie flagi w stylu DatEditor
+                         ╚═══════════════════════════════════════════════════════════ -->
+                    <TabItem Header="Właściwości">
+                        <ScrollViewer>
+                            <StackPanel Spacing="8" Margin="12" IsEnabled="{Binding HasDetails}">
+
+                                <!-- Nagłówek: ID, Nazwa, Opis -->
+                                <Border Background="#111827" CornerRadius="5" Padding="10">
+                                    <Grid ColumnDefinitions="90,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5">
+                                        <TextBlock Text="Appearance Id:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <Grid Grid.Column="1" ColumnDefinitions="160,Auto,*" ColumnSpacing="6">
+                                            <NumericUpDown Value="{Binding AppearanceId}"
+                                                           Minimum="1" Maximum="4294967295"
+                                                           ToolTip.Tip="Nowe ID musi być unikalne w bieżącej kategorii."/>
+                                            <Button Grid.Column="1" Content="Apply ID"
+                                                    Command="{Binding ApplyAppearanceIdCommand}"
+                                                    ToolTip.Tip="Sprawdza unikalność i zmienia ID wybranego obiektu."/>
+                                        </Grid>
+
+                                        <TextBlock Grid.Row="1" Text="Name:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <TextBox   Grid.Row="1" Grid.Column="1"
+                                                   Text="{Binding AppearanceNameField}" Margin="0,0,0,0"/>
+
+                                        <TextBlock Grid.Row="2" Text="Description:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <TextBox   Grid.Row="2" Grid.Column="1"
+                                                   Text="{Binding AppearanceDescField}"/>
+
+                                        <Button Grid.Row="3" Grid.Column="1"
+                                                Content="Apply object in memory"
+                                                Command="{Binding SaveCurrentObjectCommand}"
+                                                HorizontalAlignment="Left"
+                                                ToolTip.Tip="Przepisuje pola z tego formularza do wybranego obiektu przed zapisem appearances.dat."/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- ── Flagi w 2 kolumnach ──────────────────────────────── -->
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+
+                                    <!-- LEWA KOLUMNA FLAG -->
+                                    <StackPanel Grid.Column="0" Spacing="4">
+
+                                        <!-- Transparency / Transparentność -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagTransparency}"
+                                                          Content="Transparency"
+                                                          ToolTip.Tip="Poziom przezroczystości obiektu."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagTransparency}">
+                                                    <TextBlock Text="Level:" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                               ToolTip.Tip="Wartość przezroczystości zapisana w fladze."/>
+                                                    <NumericUpDown Value="{Binding FlagTransparencyLevel}"
+                                                                   Minimum="0" Maximum="255" Width="80"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Ground / Podłoże -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagGround}"
+                                                          Content="Ground"
+                                                          ToolTip.Tip="Obiekt działa jak podłoże i wpływa na chodzenie postaci."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagGround}">
+                                                    <TextBlock Text="Speed:" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                               ToolTip.Tip="Szybkość ruchu po tym podłożu."/>
+                                                    <NumericUpDown Value="{Binding FlagGroundSpeed}"
+                                                                   Minimum="0" Maximum="1000" Width="80"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Flagi boolowskie — zestaw 1 -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagClip}"    Content="Clip" ToolTip.Tip="Sprite jest przycinany przez klienta."/>
+                                                <CheckBox IsChecked="{Binding FlagBottom}"  Content="Bottom" ToolTip.Tip="Obiekt rysuje się jako dolna część pola."/>
+                                                <CheckBox IsChecked="{Binding FlagTop}"     Content="Top" ToolTip.Tip="Obiekt rysuje się nad innymi elementami pola."/>
+                                                <CheckBox IsChecked="{Binding FlagContainer}"   Content="Container" ToolTip.Tip="Obiekt może być kontenerem."/>
+                                                <CheckBox IsChecked="{Binding FlagCumulative}"  Content="Cumulative" ToolTip.Tip="Obiekt może składać się w stos."/>
+                                                <CheckBox IsChecked="{Binding FlagUsable}"      Content="Usable" ToolTip.Tip="Gracz może użyć obiektu."/>
+                                                <CheckBox IsChecked="{Binding FlagForceuse}"    Content="Forceuse" ToolTip.Tip="Klient wymusza akcję użycia."/>
+                                                <CheckBox IsChecked="{Binding FlagMultiuse}"    Content="Multiuse" ToolTip.Tip="Obiekt obsługuje użycie na innym celu."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- Write -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagWrite}"
+                                                          Content="Write"
+                                                          ToolTip.Tip="Na obiekcie można zapisać tekst."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagWrite}">
+                                                    <TextBlock Text="Max Text Length:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Value="{Binding FlagWriteMaxLength}"
+                                                                   Minimum="0" Maximum="1024" Width="80"/>
+                                                </StackPanel>
+                                                <CheckBox IsChecked="{Binding FlagWriteOnce}"
+                                                          Content="Write Once"
+                                                          ToolTip.Tip="Tekst można zapisać tylko raz."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagWriteOnce}">
+                                                    <TextBlock Text="Max Text Length:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Value="{Binding FlagWriteOnceMaxLength}"
+                                                                   Minimum="0" Maximum="1024" Width="80"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Flagi boolowskie — zestaw 2 -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagLiquidpool}"        Content="Liquid Pool" ToolTip.Tip="Obiekt jest polem płynu na mapie."/>
+                                                <CheckBox IsChecked="{Binding FlagUnpass}"            Content="Unpass" ToolTip.Tip="Nie da się przejść przez obiekt."/>
+                                                <CheckBox IsChecked="{Binding FlagUnmove}"            Content="Unmove" ToolTip.Tip="Gracz nie może przesunąć obiektu."/>
+                                                <CheckBox IsChecked="{Binding FlagUnsight}"           Content="Unsight" ToolTip.Tip="Obiekt zasłania linię widzenia."/>
+                                                <CheckBox IsChecked="{Binding FlagAvoid}"             Content="Avoid" ToolTip.Tip="Pathfinding powinien unikać tego obiektu."/>
+                                                <CheckBox IsChecked="{Binding FlagNoMovementAnimation}" Content="No Move Animation" ToolTip.Tip="Wyłącza animację ruchu dla obiektu."/>
+                                                <CheckBox IsChecked="{Binding FlagTake}"              Content="Take" ToolTip.Tip="Obiekt można zabrać do ekwipunku."/>
+                                                <CheckBox IsChecked="{Binding FlagLiquidcontainer}"   Content="Liquid Container" ToolTip.Tip="Obiekt może przechowywać płyn."/>
+                                                <CheckBox IsChecked="{Binding FlagHang}"              Content="Hang" ToolTip.Tip="Obiekt można wieszać na ścianie."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- Hook / Wieszak -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagHook}"
+                                                          Content="Hook"
+                                                          ToolTip.Tip="Obiekt jest hakiem albo miejscem zawieszenia. Zapisuje obie reprezentacje proto: direction + south/east."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="10"
+                                                            IsEnabled="{Binding FlagHook}">
+                                                    <TextBlock Text="Hook Type:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <RadioButton GroupName="HookMode"
+                                                                 IsChecked="{Binding HookModeIsSouth}"
+                                                                 Content="Hook South"
+                                                                 ToolTip.Tip="HOOK_TYPE_SOUTH (1); OTClient HookSouth=true."/>
+                                                    <RadioButton GroupName="HookMode"
+                                                                 IsChecked="{Binding HookModeIsEast}"
+                                                                 Content="Hook East"
+                                                                 ToolTip.Tip="HOOK_TYPE_EAST (2); OTClient HookEast=true."/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Rotate -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <CheckBox IsChecked="{Binding FlagRotate}" Content="Rotate" ToolTip.Tip="Obiekt może zostać obrócony."/>
+                                        </Border>
+
+                                        <!-- Light / Światło -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagLight}" Content="Light" ToolTip.Tip="Obiekt emituje światło."/>
+                                                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                                                      RowSpacing="4" ColumnSpacing="8"
+                                                      IsEnabled="{Binding FlagLight}">
+                                                    <TextBlock Text="Brightness:" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                               ToolTip.Tip="Siła światła emitowanego przez obiekt."/>
+                                                    <NumericUpDown Grid.Column="1" Value="{Binding FlagLightBrightness}"
+                                                                   Minimum="0" Maximum="10"/>
+                                                    <TextBlock Grid.Row="1" Text="Color:" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                               ToolTip.Tip="Kolor światła zapisany liczbowo."/>
+                                                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                                                        <ComboBox ItemsSource="{Binding TibiaColorOptions}"
+                                                                  SelectedIndex="{Binding FlagLightColor}"
+                                                                  Width="105">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:TibiaColorOption">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                        <Border Width="20" Height="14" Background="{Binding Brush}"
+                                                                                BorderBrush="#64748B" BorderThickness="1"/>
+                                                                        <TextBlock Text="{Binding Id}"/>
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                        <NumericUpDown Value="{Binding FlagLightColor}"
+                                                                       Minimum="0" Maximum="215" Width="72"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- DontHide / Translucent -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagDontHide}"    Content="Dont Hide" ToolTip.Tip="Klient nie powinien ukrywać obiektu."/>
+                                                <CheckBox IsChecked="{Binding FlagTranslucent}" Content="Translucent" ToolTip.Tip="Obiekt jest rysowany jako półprzezroczysty."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- Shift / Przesunięcie -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagShift}"
+                                                          Content="Shift"
+                                                          ToolTip.Tip="Przesuwa rysowanie sprite'a względem pola."/>
+                                                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                                                      RowSpacing="4" ColumnSpacing="8"
+                                                      IsEnabled="{Binding FlagShift}">
+                                                    <TextBlock Text="X:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Grid.Column="1" Value="{Binding FlagShiftX}"
+                                                                   Minimum="{Binding ShiftMinimum}" Maximum="{Binding ShiftMaximum}"/>
+                                                    <TextBlock Grid.Row="1" Text="Y:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding FlagShiftY}"
+                                                                   Minimum="{Binding ShiftMinimum}" Maximum="{Binding ShiftMaximum}"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Height / Wysokość -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagHeight}"
+                                                          Content="Height"
+                                                          ToolTip.Tip="Wysokość obiektu wpływająca na rysowanie i stosowanie."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagHeight}">
+                                                    <TextBlock Text="Elevation:" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                               ToolTip.Tip="Wartość uniesienia w pikselach."/>
+                                                    <NumericUpDown Value="{Binding FlagElevation}"
+                                                                   Minimum="0" Maximum="32" Width="80"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Reverse Addons -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <WrapPanel ItemSpacing="4">
+                                                    <CheckBox IsChecked="{Binding FlagReverseAddonsEast}"  Content="Reverse addon east"/>
+                                                    <CheckBox IsChecked="{Binding FlagReverseAddonsWest}"  Content="Reverse addon west"/>
+                                                    <CheckBox IsChecked="{Binding FlagReverseAddonsSouth}" Content="Reverse addon south"/>
+                                                    <CheckBox IsChecked="{Binding FlagReverseAddonsNorth}" Content="Reverse addon north"/>
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                    </StackPanel><!-- koniec lewej kolumny flag -->
+
+                                    <!-- PRAWA KOLUMNA FLAG -->
+                                    <StackPanel Grid.Column="1" Spacing="4">
+
+                                        <!-- LyingObject / AnimateAlways -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagLyingObject}"   Content="Lying Object" ToolTip.Tip="Obiekt jest traktowany jako leżący."/>
+                                                <CheckBox IsChecked="{Binding FlagAnimateAlways}" Content="Animate Always" ToolTip.Tip="Animacja działa cały czas, nie tylko w wybranych stanach."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- AutoMap -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagAutomap}"
+                                                          Content="Auto Map"
+                                                          ToolTip.Tip="Obiekt ma kolor na minimapie."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagAutomap}">
+                                                    <TextBlock Text="Color:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                                        <ComboBox ItemsSource="{Binding TibiaColorOptions}"
+                                                                  SelectedIndex="{Binding FlagAutomapColor}"
+                                                                  Width="105">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:TibiaColorOption">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                        <Border Width="20" Height="14" Background="{Binding Brush}"
+                                                                                BorderBrush="#64748B" BorderThickness="1"/>
+                                                                        <TextBlock Text="{Binding Id}"/>
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                        <NumericUpDown Value="{Binding FlagAutomapColor}"
+                                                                       Minimum="0" Maximum="215" Width="72"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- LensHelp -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagLenshelp}"
+                                                          Content="Lens help"
+                                                          ToolTip.Tip="ID podpowiedzi używane przez klienta przy oglądaniu obiektu."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagLenshelp}">
+                                                    <TextBlock Text="Type:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <ComboBox ItemsSource="{Binding LenshelpTypeLabels}"
+                                                              SelectedIndex="{Binding FlagLenshelpSelectionIndex}"
+                                                              MinWidth="190"
+                                                              ToolTip.Tip="Typy Lens Help odpowiadają identyfikatorom 1100–1112."/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- FullGround / IgnoreLook -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagFullbank}"    Content="Full Ground" ToolTip.Tip="Pełny wariant podłoża/banku ruchu."/>
+                                                <CheckBox IsChecked="{Binding FlagIgnoreLook}"  Content="Ignore Look" ToolTip.Tip="Obiekt ignoruje akcję patrzenia."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- Clothes / Slot ekwipunku -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagClothes}"
+                                                          Content="Clothes"
+                                                          ToolTip.Tip="Obiekt zajmuje slot ekwipunku."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagClothes}">
+                                                    <TextBlock Text="Slot:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <ComboBox ItemsSource="{Binding ClothesSlotLabels}"
+                                                              SelectedIndex="{Binding FlagClothesSlot}"
+                                                              MinWidth="150"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Default Action -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagDefaultAction}"
+                                                          Content="Default Action"
+                                                          ToolTip.Tip="Domyślna akcja klienta dla obiektu."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagDefaultAction}">
+                                                    <TextBlock Text="Action:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <ComboBox ItemsSource="{Binding DefaultActionLabels}"
+                                                              SelectedIndex="{Binding FlagDefaultActionIndex}"
+                                                              MinWidth="150"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Market / Rynek -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="4">
+                                                <CheckBox IsChecked="{Binding FlagMarket}"
+                                                          Content="Market"
+                                                          ToolTip.Tip="Obiekt jest widoczny w markecie."/>
+                                                <StackPanel IsEnabled="{Binding FlagMarket}" Spacing="3">
+                                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                                                          RowSpacing="4" ColumnSpacing="8">
+                                                        <TextBlock Text="Category:"  Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                        <ComboBox Grid.Column="1" ItemsSource="{Binding MarketCategoryLabels}"
+                                                                  SelectedIndex="{Binding FlagMarketCategory}" MinWidth="180"/>
+                                                        <TextBlock Grid.Row="1" Text="Trade As:"   Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding FlagMarketTradeAs}" Minimum="0"/>
+                                                        <TextBlock Grid.Row="2" Text="Show As:"    Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding FlagMarketShowAs}" Minimum="0"/>
+                                                        <TextBlock Grid.Row="3" Text="Min level:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding FlagMarketMinLevel}" Minimum="0"/>
+                                                    </Grid>
+                                                    <TextBlock Text="Profession:" Foreground="#94A3B8" FontSize="10"/>
+                                                    <WrapPanel ItemSpacing="4">
+                                                        <CheckBox IsChecked="{Binding FlagMarketProfAny}"      Content="Any"/>
+                                                        <CheckBox IsChecked="{Binding FlagMarketProfNone}"     Content="None"/>
+                                                        <CheckBox IsChecked="{Binding FlagMarketProfKnight}"   Content="Knight"/>
+                                                        <CheckBox IsChecked="{Binding FlagMarketProfPaladin}"  Content="Paladin"/>
+                                                        <CheckBox IsChecked="{Binding FlagMarketProfSorcerer}" Content="Sorcerer"/>
+                                                        <CheckBox IsChecked="{Binding FlagMarketProfDruid}"    Content="Druid"/>
+                                                        <CheckBox IsChecked="{Binding FlagMarketProfPromoted}" Content="Promoted"/>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Wrap / Unwrap / TopEffect / DecoItemKit -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagWrap}"       Content="Wrap" ToolTip.Tip="Obiekt obsługuje akcję zawinięcia."/>
+                                                <CheckBox IsChecked="{Binding FlagUnwrap}"     Content="Unwrap" ToolTip.Tip="Obiekt obsługuje akcję odwinięcia."/>
+                                                <CheckBox IsChecked="{Binding FlagTopeffect}"  Content="Top Effect" ToolTip.Tip="Efekt rysuje się nad innymi elementami."/>
+                                                <CheckBox IsChecked="{Binding FlagDecoItemKit}" Content="Deco Item Kit" ToolTip.Tip="Obiekt jest częścią systemu dekoracji."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- ChangedToExpire -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagChangedtoexpire}"
+                                                          Content="Changed To Expire"
+                                                          ToolTip.Tip="Obiekt zmienia się na inny po wygaśnięciu."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagChangedtoexpire}">
+                                                    <TextBlock Text="Former Id:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Value="{Binding FlagChangedToExpireFormerId}"
+                                                                   Minimum="0" Width="100"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Corpse / PlayerCorpse / Podium -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagCorpse}"       Content="Corpse" ToolTip.Tip="Obiekt jest ciałem/zwłokami."/>
+                                                <CheckBox IsChecked="{Binding FlagPlayerCorpse}" Content="Player Corpse" ToolTip.Tip="Obiekt jest ciałem gracza."/>
+                                                <CheckBox IsChecked="{Binding FlagShowOffSocket}" Content="Podium" ToolTip.Tip="Flaga ShowOffSocket używana przez klienta dla podium."/>
+                                                <CheckBox IsChecked="{Binding FlagReportable}"   Content="Reportable" ToolTip.Tip="Obiekt może być zgłaszany w kliencie."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- NpcSaleData -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="6">
+                                                <CheckBox IsChecked="{Binding FlagNpcSaleData}"
+                                                          Content="Npc Sale Data"
+                                                          ToolTip.Tip="Lista ofert NPC: nazwa, lokalizacja, ceny i waluta."/>
+                                                <Grid RowDefinitions="Auto,153" RowSpacing="6"
+                                                      IsEnabled="{Binding FlagNpcSaleData}">
+                                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
+                                                        <Button Content="Add row" Command="{Binding AddNpcSaleEntryCommand}"/>
+                                                        <Button Content="Delete row" Command="{Binding RemoveNpcSaleEntryCommand}"/>
+                                                        <Button Content="Clear" Command="{Binding ClearNpcSaleEntriesCommand}"/>
+                                                    </StackPanel>
+                                                    <DataGrid Grid.Row="1"
+                                                              ItemsSource="{Binding NpcSaleEntries}"
+                                                              SelectedItem="{Binding SelectedNpcSaleEntry}"
+                                                              AutoGenerateColumns="False"
+                                                              CanUserReorderColumns="False"
+                                                              CanUserResizeColumns="True"
+                                                              CanUserSortColumns="False"
+                                                              IsReadOnly="False"
+                                                              GridLinesVisibility="All"
+                                                              HeadersVisibility="Column"
+                                                              FontSize="11">
+                                                        <DataGrid.Columns>
+                                                            <DataGridTextColumn Header="Name" Binding="{Binding Name, Mode=TwoWay}" Width="120"/>
+                                                            <DataGridTextColumn Header="Location" Binding="{Binding Location, Mode=TwoWay}" Width="120"/>
+                                                            <DataGridTextColumn Header="Buy Price" Binding="{Binding BuyPrice, Mode=TwoWay}" Width="85"/>
+                                                            <DataGridTextColumn Header="Sale Price" Binding="{Binding SalePrice, Mode=TwoWay}" Width="85"/>
+                                                            <DataGridTextColumn Header="CurrencyId" Binding="{Binding CurrencyObjectTypeId, Mode=TwoWay}" Width="85"/>
+                                                            <DataGridTextColumn Header="CurrencyName" Binding="{Binding CurrencyQuestFlagDisplayName, Mode=TwoWay}" Width="130"/>
+                                                        </DataGrid.Columns>
+                                                    </DataGrid>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Cyclopedia / Ammo -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="4">
+                                                <WrapPanel ItemSpacing="4">
+                                                    <CheckBox IsChecked="{Binding FlagCyclopedia}" Content="Cyclopedia" ToolTip.Tip="Obiekt jest widoczny w Cyclopedii."/>
+                                                    <CheckBox IsChecked="{Binding FlagAmmo}" Content="Ammo" ToolTip.Tip="Obiekt jest amunicją."/>
+                                                </WrapPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" IsEnabled="{Binding FlagCyclopedia}">
+                                                    <TextBlock Text="Type:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Value="{Binding FlagCyclopediaType}" Minimum="0" Width="100"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- UpgradeClassification -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagUpgradeclassification}"
+                                                          Content="Upgrade classification"
+                                                          ToolTip.Tip="Klasa ulepszenia używana przez klienta."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagUpgradeclassification}">
+                                                    <TextBlock Text="Classification:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Value="{Binding FlagUpgradeClassificationAmount}"
+                                                                   Minimum="0" Width="80"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Wearout / ClockExpire / Expire / ExpireStop -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <WrapPanel ItemSpacing="4">
+                                                <CheckBox IsChecked="{Binding FlagWearout}"    Content="Wearout" ToolTip.Tip="Obiekt może się zużywać."/>
+                                                <CheckBox IsChecked="{Binding FlagClockexpire}" Content="Clock expire" ToolTip.Tip="Wygaśnięcie liczone zegarem."/>
+                                                <CheckBox IsChecked="{Binding FlagExpire}"     Content="Expire" ToolTip.Tip="Obiekt ma mechanizm wygaśnięcia."/>
+                                                <CheckBox IsChecked="{Binding FlagExpirestop}" Content="Expire stop" ToolTip.Tip="Zatrzymuje mechanizm wygaśnięcia."/>
+                                            </WrapPanel>
+                                        </Border>
+
+                                        <!-- SkillWheel Gem -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagSkillwheelGem}"
+                                                          Content="WheelGem"
+                                                          ToolTip.Tip="Obiekt jest klejnotem koła umiejętności."/>
+                                                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                                                      RowSpacing="4" ColumnSpacing="8"
+                                                      IsEnabled="{Binding FlagSkillwheelGem}">
+                                                    <TextBlock Text="Quality Id:"  Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Grid.Column="1" Value="{Binding FlagGemQualityId}" Minimum="0"/>
+                                                    <TextBlock Grid.Row="1" Text="Voc Id:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding FlagGemVocId}" Minimum="0"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- DualWielding -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <CheckBox IsChecked="{Binding FlagDualWielding}"
+                                                      Content="Dual Wielding"
+                                                      ToolTip.Tip="Obiekt wspiera walkę dwiema broniami."/>
+                                        </Border>
+
+                                        <!-- Imbueable -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagImbueable}"
+                                                          Content="Imbueable"
+                                                          ToolTip.Tip="Obiekt można imbuować."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagImbueable}">
+                                                    <TextBlock Text="Slot Count:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Value="{Binding FlagImbueableSlotCount}"
+                                                                   Minimum="0" Width="80"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Proficiency -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <CheckBox IsChecked="{Binding FlagProficiency}"
+                                                          Content="Proficiency"
+                                                          ToolTip.Tip="Obiekt ma wymaganie albo oznaczenie biegłości."/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                                            IsEnabled="{Binding FlagProficiency}">
+                                                    <TextBlock Text="Proficiency Id:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                    <NumericUpDown Value="{Binding FlagProficiencyId}"
+                                                                   Minimum="0" Width="80"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- MinimumLevel / WeaponType -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                                                  RowSpacing="6" ColumnSpacing="8">
+                                                <TextBlock Text="Minimum Level:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                <NumericUpDown Grid.Column="1" Value="{Binding FlagMinimumLevel}"
+                                                               Minimum="0" Maximum="999"/>
+                                                <TextBlock Grid.Row="1" Text="Weapon Type:" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                                <ComboBox Grid.Row="1" Grid.Column="1"
+                                                          ItemsSource="{Binding WeaponTypeLabels}"
+                                                          SelectedIndex="{Binding FlagWeaponTypeIndex}"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- RestrictToVocation -->
+                                        <Border Background="#111827" CornerRadius="5" Padding="8">
+                                            <StackPanel Spacing="3">
+                                                <TextBlock Text="Restrict Vocation:"
+                                                           Foreground="#94A3B8" FontSize="11"/>
+                                                <WrapPanel ItemSpacing="4">
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocAny}"      Content="Any"/>
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocNone}"     Content="None"/>
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocKnight}"   Content="Knight"/>
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocPaladin}"  Content="Paladin"/>
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocSorcerer}" Content="Sorcerer"/>
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocDruid}"    Content="Druid"/>
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocMonk}"     Content="Monk"/>
+                                                    <CheckBox IsChecked="{Binding FlagRestrictVocPromoted}" Content="Promoted"/>
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                    </StackPanel><!-- koniec prawej kolumny flag -->
+
+                                </Grid><!-- koniec 2-kolumnowej siatki flag -->
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ╔═══════════════════════════════════════════════════════════
+                         ║  TEXTURE — podgląd sprite'ów + dane tekstury
+                         ╚═══════════════════════════════════════════════════════════ -->
+                    <TabItem Header="Tekstura">
+                        <Grid ColumnDefinitions="360,*" IsEnabled="{Binding HasDetails}">
+
+                            <Border Grid.Column="0" Padding="12" BorderBrush="#1E293B" BorderThickness="0,0,1,0">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Podgląd obiektu"
+                                               FontWeight="SemiBold"
+                                               ToolTip.Tip="Podgląd składa wszystkie sprite'y obiektu tak jak oryginalny edytor tekstur."/>
+
+                                    <Grid Width="320" Height="300">
+                                        <Border x:Name="PreviewDropSurface"
+                                            Background="#0F172A" BorderBrush="#334155" BorderThickness="1"
+                                            DragDrop.AllowDrop="True"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                Width="240" Height="240">
+                                            <Image Source="{Binding PreviewImage}"
+                                                   Width="230" Height="230"
+                                                   Stretch="Uniform"
+                                                   RenderOptions.BitmapInterpolationMode="None"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <Button Width="34" Height="34"
+                                                Background="#475569" Foreground="White" FontSize="18"
+                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                IsVisible="{Binding CanUseDirections}"
+                                                Command="{Binding SetDirectionCommand}" CommandParameter="0"
+                                                ToolTip.Tip="Kierunek: góra. Zmienia wariant kierunkowy sprite'a.">
+                                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                                  Data="M 2,8 L 8,2 L 14,8 M 8,2 L 8,14"/>
+                                        </Button>
+                                        <Button Width="34" Height="34"
+                                                Background="#475569" Foreground="White" FontSize="18"
+                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                IsVisible="{Binding CanUseDirections}"
+                                                Command="{Binding SetDirectionCommand}" CommandParameter="1"
+                                                ToolTip.Tip="Kierunek: prawo. Zmienia wariant kierunkowy sprite'a.">
+                                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                                  Data="M 8,2 L 14,8 L 8,14 M 2,8 L 14,8"/>
+                                        </Button>
+                                        <Button Width="34" Height="34"
+                                                Background="#475569" Foreground="White" FontSize="18"
+                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                                                IsVisible="{Binding CanUseDirections}"
+                                                Command="{Binding SetDirectionCommand}" CommandParameter="2"
+                                                ToolTip.Tip="Kierunek: dół. Zmienia wariant kierunkowy sprite'a.">
+                                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                                  Data="M 2,8 L 8,14 L 14,8 M 8,2 L 8,14"/>
+                                        </Button>
+                                        <Button Width="34" Height="34"
+                                                Background="#475569" Foreground="White" FontSize="18"
+                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                IsVisible="{Binding CanUseDirections}"
+                                                Command="{Binding SetDirectionCommand}" CommandParameter="3"
+                                                ToolTip.Tip="Kierunek: lewo. Zmienia wariant kierunkowy sprite'a.">
+                                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                                  Data="M 8,2 L 2,8 L 8,14 M 2,8 L 14,8"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <TextBlock Text="{Binding PreviewInfo}" FontSize="11" Foreground="#94A3B8"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding TextureSummary}" FontSize="11" Foreground="#64748B"
+                                               TextWrapping="Wrap"/>
+
+                                    <StackPanel Spacing="7">
+                                        <TextBlock Text="Grupa klatek" Foreground="#94A3B8"
+                                                   ToolTip.Tip="Domyślnie wybierana jest grupa Idle. Lista pokazuje rzeczywiste grupy i liczbę klatek."/>
+                                        <ComboBox ItemsSource="{Binding TextureFrameGroups}"
+                                                  SelectedIndex="{Binding SelectedGroupIndex, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:AppearanceFrameGroupListItem">
+                                                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Klatka animacji" Foreground="#94A3B8"
+                                                   ToolTip.Tip="Klatka animacji aktualnie używana w podglądzie."/>
+                                        <Grid ColumnDefinitions="34,52,34,*" ColumnSpacing="6">
+                                            <Button Grid.Column="0" Width="34" Command="{Binding PreviousFrameCommand}"
+                                                    ToolTip.Tip="Poprzednia klatka animacji.">
+                                                <Path Width="12" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                                      Data="M 9,2 L 3,8 L 9,14"/>
+                                            </Button>
+                                            <TextBlock Grid.Column="1" Text="{Binding FrameLabel}" TextAlignment="Center"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="2" Width="34" Command="{Binding NextFrameCommand}"
+                                                    ToolTip.Tip="Następna klatka animacji.">
+                                                <Path Width="12" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                                      Data="M 3,2 L 9,8 L 3,14"/>
+                                            </Button>
+                                            <Button Grid.Column="3" Content="{Binding PlayButtonText}"
+                                                    HorizontalAlignment="Stretch"
+                                                    IsEnabled="{Binding CanUseFrames}"
+                                                    Command="{Binding ToggleAnimationCommand}"
+                                                    ToolTip.Tip="Odtwarza wszystkie klatki wybranej grupy z czasami zapisanymi w assets."/>
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="8">
+                                            <TextBlock Text="Addon ?" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Wariant dodatku stroju lub wzór Y tekstury."/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding CurrentAddonIndex}"
+                                                           Minimum="0" Maximum="{Binding MaxAddonIndex}" HorizontalAlignment="Stretch"/>
+
+                                            <TextBlock Grid.Row="1" Text="Głębia Z ?" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Wariant głębi tekstury, używany np. przez mounty albo dodatkowe stany."/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding CurrentPatternZIndex}"
+                                                           Minimum="0" Maximum="{Binding MaxPatternZIndex}" HorizontalAlignment="Stretch"/>
+                                        </Grid>
+
+                                        <CheckBox Content="Łącz warstwy ?"
+                                                  IsChecked="{Binding BlendLayers}"
+                                                  ToolTip.Tip="Pokazuje wszystkie warstwy obiektu naraz zamiast tylko bazowej."/>
+                                        <CheckBox Content="Pokaż wszystkie addony ?"
+                                                  IsChecked="{Binding ShowAllAddons}"
+                                                  ToolTip.Tip="Dla stroju nakłada wszystkie dostępne addony w podglądzie."/>
+                                    </StackPanel>
+
+                                    <Border Background="#111827" CornerRadius="5" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <CheckBox Content="Koloruj strój ?"
+                                                      IsChecked="{Binding OutfitColorize}"
+                                                      ToolTip.Tip="Używa drugiej warstwy stroju jako maski kolorów głowy, tułowia, nóg i stóp."/>
+                                            <Grid ColumnDefinitions="72,80,72,80" RowDefinitions="Auto,Auto"
+                                                  RowSpacing="6" ColumnSpacing="6">
+                                                <TextBlock Text="Głowa ?" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                           ToolTip.Tip="Kolor HSI głowy w zakresie 0-132, zgodny z klientem Tibii."/>
+                                                <NumericUpDown Grid.Column="1" Value="{Binding OutfitHeadColor}" Minimum="0" Maximum="132" Width="76"/>
+                                                <TextBlock Grid.Column="2" Text="Tułów ?" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                           ToolTip.Tip="Kolor HSI tułowia w zakresie 0-132."/>
+                                                <NumericUpDown Grid.Column="3" Value="{Binding OutfitBodyColor}" Minimum="0" Maximum="132" Width="76"/>
+                                                <TextBlock Grid.Row="1" Text="Nogi ?" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                           ToolTip.Tip="Kolor HSI nóg w zakresie 0-132."/>
+                                                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding OutfitLegsColor}" Minimum="0" Maximum="132" Width="76"/>
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Text="Stopy ?" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                           ToolTip.Tip="Kolor HSI stóp w zakresie 0-132."/>
+                                                <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding OutfitFeetColor}" Minimum="0" Maximum="132" Width="76"/>
+                                            </Grid>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Button Content="Losuj kolory" Command="{Binding RandomizeOutfitColorsCommand}"/>
+                                                <Button Content="Kopiuj XML look" Command="{Binding CopyOutfitXmlCommand}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <TextBlock Text="Przeciągnij sprite z prawej listy i upuść bezpośrednio na podgląd, aby przypisać do aktywnego kierunku/klatki."
+                                               FontSize="10" Foreground="#64748B" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <ScrollViewer Grid.Column="1" Padding="12">
+                                <StackPanel Spacing="10">
+                                    <Border Background="#111827" CornerRadius="5" Padding="10">
+                                            <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                                              RowSpacing="6" ColumnSpacing="8">
+                                            <TextBlock Text="Grupy" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Liczba grup klatek (Idle/Walking dla strojów)."/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <NumericUpDown Value="{Binding PropGroups}" Minimum="1" Maximum="2" Width="90"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Row="1" Text="Warstwy" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Liczba warstw sprite'a. Warstwy są nakładane jedna na drugą."/>
+                                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <NumericUpDown Value="{Binding PropLayers}" Minimum="1" Maximum="16" Width="90"/>
+                                                <Button Content="OK" Command="{Binding SetLayerCountCommand}"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Row="2" Text="Szerokość wzoru" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Liczba wariantów w osi X (kierunki w outfitach)."/>
+                                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <NumericUpDown Value="{Binding PropPatternX}" Minimum="1" Maximum="16" Width="90"/>
+                                                <Button Content="OK" Command="{Binding SetPatternXCommand}"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Row="3" Text="Wysokość wzoru" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Liczba wariantów w osi Y (addony w outfitach)."/>
+                                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <NumericUpDown Value="{Binding PropPatternY}" Minimum="1" Maximum="16" Width="90"/>
+                                                <Button Content="OK" Command="{Binding SetPatternYCommand}"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Row="4" Text="Głębia wzoru" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Liczba wariantów w osi Z (mount w outfitach)."/>
+                                            <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <NumericUpDown Value="{Binding PropPatternZ}" Minimum="1" Maximum="16" Width="90"/>
+                                                <Button Content="OK" Command="{Binding SetPatternZCommand}"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Row="5" Text="Klatki animacji" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Liczba klatek animacji w aktualnej grupie."/>
+                                            <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <NumericUpDown Value="{Binding PropFrames}" Minimum="1" Maximum="256" Width="90"/>
+                                                <Button Content="OK" Command="{Binding SetFrameCountCommand}"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Row="6" Text="Kwadrat kolizji" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Rozmiar bounding square, czyli orientacyjnego obszaru obiektu dla klienta."/>
+                                            <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <NumericUpDown Value="{Binding PropBoundingSquare}" Minimum="0" Maximum="512" Width="90"/>
+                                                <Button Content="OK" Command="{Binding SetBoundingSquareCommand}"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Row="7" Text="Nieprzezroczysty" Foreground="#94A3B8" VerticalAlignment="Center"
+                                                       ToolTip.Tip="Informuje klienta, że tekstura nie ma przezroczystości."/>
+                                            <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <CheckBox IsChecked="{Binding PropIsOpaque}"/>
+                                                <Button Content="OK" Command="{Binding SetOpaqueCommand}"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="8" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+                                                <Button Content="Kopiuj klatkę" Command="{Binding CopyFrameCommand}"/>
+                                                <Button Content="Wklej klatkę" Command="{Binding PasteFrameCommand}"/>
+                                                <Button Content="Wyczyść klatkę" Command="{Binding ClearFrameCommand}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Background="#111827" CornerRadius="5" Padding="10"
+                                            IsVisible="{Binding HasAnimation}">
+                                        <Grid ColumnDefinitions="170,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                                              RowSpacing="6" ColumnSpacing="8">
+                                            <TextBlock Text="Animacja sprite'a" Grid.ColumnSpan="2"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock Grid.Row="1" Text="Faza startowa ?" Foreground="#94A3B8"
+                                                       ToolTip.Tip="Domyślna klatka startowa animacji."/>
+                                            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding AnimDefaultStartPhase}"
+                                                           Minimum="0" Width="90"/>
+                                            <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="Losowa faza startowa ?"
+                                                      IsChecked="{Binding AnimRandomStartPhase}"
+                                                      ToolTip.Tip="Animacja może zacząć od losowej klatki."/>
+                                            <CheckBox Grid.Row="3" Grid.ColumnSpan="2" Content="Synchronizowana ?"
+                                                      IsChecked="{Binding AnimSynchronized}"
+                                                      ToolTip.Tip="Animacja ma być zsynchronizowana między klientami."/>
+                                            <TextBlock Grid.Row="4" Text="Typ pętli ?" Foreground="#94A3B8"
+                                                       ToolTip.Tip="Sposób powtarzania animacji: ping-pong, bez końca albo określona liczba powtórzeń."/>
+                                            <ComboBox Grid.Row="4" Grid.Column="1"
+                                                      ItemsSource="{Binding AnimationLoopTypeLabels}"
+                                                      SelectedIndex="{Binding AnimLoopTypeSelectionIndex}"
+                                                      Width="170"/>
+                                            <TextBlock Grid.Row="5" Text="Liczba pętli ?" Foreground="#94A3B8"
+                                                       ToolTip.Tip="Ile razy animacja ma się powtórzyć przy trybie liczonym."/>
+                                            <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                                <NumericUpDown Value="{Binding AnimLoopCount}"
+                                                               Minimum="0" Width="90"/>
+                                                <Button Content="Czas do wszystkich"
+                                                        Command="{Binding ApplyDurationToAllFramesCommand}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Background="#111827" CornerRadius="5" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Sloty sprite'ów wybranego obiektu"
+                                                       FontWeight="SemiBold"
+                                                       ToolTip.Tip="Ta lista jest filtrowana do sprite'ów aktualnie wybranego obiektu."/>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Button Content="Dodaj slot"
+                                                        Command="{Binding AddSpriteSlotCommand}"
+                                                        ToolTip.Tip="Dodaje pusty slot sprite'a do aktualnej grupy."/>
+                                                <Button Content="Usuń slot"
+                                                        Command="{Binding RemoveSpriteSlotCommand}"
+                                                        ToolTip.Tip="Usuwa zaznaczony slot sprite'a z aktualnej grupy."/>
+                                                <Button Content="Wyczyść slot"
+                                                        Command="{Binding ClearSelectedSpriteSlotCommand}"
+                                                        ToolTip.Tip="Ustawia ID sprite'a w zaznaczonym slocie na 0."/>
+                                                <Button Content="Arkusz sprite"
+                                                        Command="{Binding OpenSpriteSheetEditorCommand}"
+                                                        ToolTip.Tip="Otwiera manager arkusza zawierającego zaznaczony sprite."/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="Przypisz sprite ID ?" VerticalAlignment="Center"
+                                                           ToolTip.Tip="ID sprite'a, które zostanie wpisane do zaznaczonego slotu."/>
+                                                <NumericUpDown Value="{Binding SpriteIdToAssign}" Minimum="0" Maximum="999999999" Width="120"/>
+                                                <Button Content="Przypisz"
+                                                        Command="{Binding AssignSpriteToSelectedSlotCommand}"/>
+                                            </StackPanel>
+                                            <ItemsControl ItemsSource="{Binding SpriteSlots}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal" ItemSpacing="6"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:SpriteSlotItem">
+                                                        <StackPanel Spacing="2" Margin="2" Width="78"
+                                                                    DragDrop.AllowDrop="True"
+                                                                    ToolTip.Tip="{Binding Details}">
+                                                            <Border Background="#0F172A" CornerRadius="3"
+                                                                    Width="64" Height="64">
+                                                                <Image Source="{Binding Thumbnail}"
+                                                                       Width="58" Height="58"
+                                                                       Stretch="Uniform"
+                                                                       RenderOptions.BitmapInterpolationMode="None"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding SpriteId}"
+                                                                       FontSize="10" Foreground="#CBD5E1"
+                                                                       HorizontalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Background="#111827" CornerRadius="5" Padding="10"
+                                            IsVisible="{Binding BoundingBoxes.Count}">
+                                        <StackPanel Spacing="5">
+                                            <TextBlock Text="Bounding box per direction ?"
+                                                       FontWeight="SemiBold" FontSize="12"
+                                                       ToolTip.Tip="Osobne prostokąty kolizji dla kierunków obiektu."/>
+                                            <ItemsControl ItemsSource="{Binding BoundingBoxes}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:BoundingBoxItem">
+                                                        <TextBlock FontSize="11" Foreground="#CBD5E1">
+                                                            <Run Text="X="/>
+                                                            <Run Text="{Binding X}"/>
+                                                            <Run Text=" Y="/>
+                                                            <Run Text="{Binding Y}"/>
+                                                            <Run Text=" W="/>
+                                                            <Run Text="{Binding Width}"/>
+                                                            <Run Text=" H="/>
+                                                            <Run Text="{Binding Height}"/>
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- ╔═══════════════════════════════════════════════════════════
+                         ║  IMPORT SPRITE SHEET — szybkie cięcie i dopisanie sprite'ów
+                         ╚═══════════════════════════════════════════════════════════ -->
+                    <TabItem Header="Import Sprite Sheetu">
+                        <Grid RowDefinitions="Auto,*" IsEnabled="{Binding HasDetails}">
+                            <Border Grid.Row="0" Background="#111827" Padding="10"
+                                    BorderBrush="#1E293B" BorderThickness="0,0,0,1">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="6">
+                                    <TextBlock Text="Plik:" VerticalAlignment="Center" Foreground="#94A3B8"/>
+                                    <TextBox Grid.Column="1" Text="{Binding SheetImportFilePath}" IsReadOnly="True"
+                                             PlaceholderText="Wybierz plik sprite sheetu..."/>
+                                    <Button Grid.Column="2" Content="Wybierz" Command="{Binding PickSpriteSheetCommand}"/>
+                                    <Button Grid.Column="3" Content="Importuj" Command="{Binding ImportSpriteSheetCommand}"/>
+
+                                    <TextBlock Grid.Row="1" Text="Typ sprite:" VerticalAlignment="Center" Foreground="#94A3B8"/>
+                                    <ComboBox Grid.Row="1" Grid.Column="1"
+                                              ItemsSource="{Binding SpriteSheetImportLayouts}"
+                                              SelectedItem="{Binding SheetImportSelectedLayout}"
+                                              DisplayMemberBinding="{Binding DisplayName}"
+                                              Width="250"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2"
+                                               Text="{Binding SheetImportSummary}"
+                                               Foreground="#64748B"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <ScrollViewer Grid.Row="1" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Podgląd cięcia (czerwone linie siatki)"
+                                               FontWeight="SemiBold"/>
+                                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" Padding="6">
+                                        <Image Source="{Binding SheetImportPreview}"
+                                               Stretch="Uniform"
+                                               MaxHeight="520"
+                                               RenderOptions.BitmapInterpolationMode="None"/>
+                                    </Border>
+                                    <TextBlock Text="Import tworzy nowy arkusz i dopisuje nowe sprite'y na koniec katalogu."
+                                               Foreground="#94A3B8"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+
+                    <TabItem Header="Dodaj nowe sprity">
+                        <Grid RowDefinitions="Auto,*,Auto" IsEnabled="{Binding HasDetails}">
+                            <Border Grid.Row="0" Background="#111827" Padding="10"
+                                    BorderBrush="#1E293B" BorderThickness="0,0,0,1">
+                                <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+                                    <Button Content="Wybierz pliki"
+                                            Command="{Binding PickNewSpriteFilesCommand}"/>
+                                    <Button Grid.Column="1" Content="Wyczyść"
+                                            Command="{Binding ClearPendingNewSpritesCommand}"/>
+                                    <Button Grid.Column="2" Content="Dodaj do listy sprite'ów"
+                                            Command="{Binding ImportPendingNewSpritesCommand}"/>
+                                    <TextBlock Grid.Column="4"
+                                               Text="Obrazy: .png .bmp .jpg .jpeg"
+                                               Foreground="#64748B" VerticalAlignment="Center" FontSize="10"/>
+                                </Grid>
+                            </Border>
+
+                            <Grid Grid.Row="1" ColumnDefinitions="320,*" ColumnSpacing="12" Margin="12">
+                                <Border x:Name="NewSpritesDropSurface"
+                                        Grid.Column="0"
+                                        Background="#0F172A" BorderBrush="#334155" BorderThickness="1"
+                                        CornerRadius="6"
+                                        DragDrop.AllowDrop="True"
+                                        Padding="12">
+                                    <StackPanel Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="Upuść nowe sprite tutaj"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="Przeciągnij pojedyncze pliki obrazów. Rozmiar jest sprawdzany przed dodaniem do kolejki."
+                                                   FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap"/>
+                                        <TextBlock Text="Każdy wymiar musi mieć: 32, 64, 96, 128, 192 albo 384 px — zgodnie z 36 układami nowego OTClienta."
+                                                   FontSize="10" Foreground="#64748B" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding NewSpritesValidationMessage}"
+                                                   FontSize="10" Foreground="#F59E0B" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1" Background="#111827" CornerRadius="5" Padding="10">
+                                    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                                        <TextBlock Text="Kolejka nowych sprite'ów"
+                                                   FontWeight="SemiBold"/>
+                                        <ListBox Grid.Row="1" ItemsSource="{Binding PendingNewSprites}">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:NewSpriteImportItem">
+                                                    <Grid ColumnDefinitions="2*,100,3*" ColumnSpacing="8" Margin="2,1">
+                                                        <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding SizeLabel}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding FullPath}" TextTrimming="CharacterEllipsis" Foreground="#94A3B8"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <Border Grid.Row="2" Background="#0F172A" Padding="10"
+                                    BorderBrush="#1E293B" BorderThickness="0,1,0,0">
+                                <TextBlock Text="{Binding NewSpritesSummary}" Foreground="#94A3B8" TextWrapping="Wrap"/>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- ╔═══════════════════════════════════════════════════════════
+                         ║  OTHER — surowy dump Protobuf
+                         ╚═══════════════════════════════════════════════════════════ -->
+                    <TabItem Header="Inne">
+                        <ScrollViewer Padding="12">
+                            <Border Background="#111827" CornerRadius="5" Padding="10"
+                                    IsVisible="{Binding HasDetails}">
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="Pełny dump obiektu Protobuf (Appearance):"
+                                               Foreground="#94A3B8" FontSize="11"/>
+                                    <SelectableTextBlock Text="{Binding OtherFullInfo}"
+                                                         FontFamily="Cascadia Code, Consolas, monospace"
+                                                         FontSize="11" Foreground="#CBD5E1"
+                                                         TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </ScrollViewer>
+                    </TabItem>
+
+                </TabControl>
+            </Grid>
+
+            <!-- ══════════════════════════════════════════════════════════════════
+                 PRAWA KOLUMNA — globalna lista sprite'ów assets
+                 ══════════════════════════════════════════════════════════════════ -->
+            <Border Grid.Column="2" BorderBrush="#1E293B" BorderThickness="1,0,0,0">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
+                    <Border Grid.Row="0" Background="#111827" Padding="8,6"
+                            BorderBrush="#2563EB" BorderThickness="0,0,0,1">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Lista sprite'ów" FontWeight="SemiBold" FontSize="12"
+                                       ToolTip.Tip="Globalna lista pojedynczych sprite'ów z catalog-content.json. Przeciągnij sprite na slot tekstury obiektu."/>
+                            <TextBlock Text="?" Foreground="#22C55E" FontWeight="Bold"
+                                       ToolTip.Tip="Tak działa oryginał: prawa lista pokazuje wszystkie sprite'y, a nie tylko sprite'y aktualnego obiektu."/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="#0F172A" Padding="8"
+                            BorderBrush="#1E293B" BorderThickness="0,0,0,1">
+                        <StackPanel Spacing="7">
+                            <TextBlock Text="{Binding SpritePageInfo}"
+                                       FontSize="10" Foreground="#94A3B8"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                                <NumericUpDown Value="{Binding SpriteSearchId}"
+                                               Minimum="0"
+                                               Maximum="999999999"
+                                               ToolTip.Tip="Wpisz ID sprite'a i przejdź do strony, na której leży w katalogu."/>
+                                <Button Grid.Column="1"
+                                        Content="Szukaj"
+                                        Command="{Binding SearchGlobalSpriteCommand}"/>
+                                <Button Grid.Column="2"
+                                        Content="Przypisz"
+                                        Command="{Binding AssignSelectedGlobalSpriteToSlotCommand}"
+                                        ToolTip.Tip="Przypisuje zaznaczony sprite do zaznaczonego slotu tekstury."/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <ListBox Grid.Row="2"
+                             ItemsSource="{Binding GlobalSprites}"
+                             SelectedItem="{Binding SelectedGlobalSprite, Mode=TwoWay}"
+                             Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SpriteBrowserItem">
+                                <Grid ColumnDefinitions="44,*" Margin="4,2"
+                                      PointerPressed="GlobalSpriteItem_PointerPressed"
+                                      ToolTip.Tip="Przytrzymaj i przeciągnij na slot w zakładce Tekstura.">
+                                    <Border Grid.Column="0" Background="#0F172A" CornerRadius="3"
+                                            Width="40" Height="40">
+                                        <Image Source="{Binding Thumbnail}"
+                                               Width="36" Height="36"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapInterpolationMode="None"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="5,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Text="przeciągnij do tekstury"
+                                                   FontSize="9" Foreground="#64748B"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Grid.Row="3" Background="#111827" Padding="8,6"
+                            BorderBrush="#1E293B" BorderThickness="0,1,0,0">
+                        <Grid ColumnDefinitions="32,32,*,32,32" ColumnSpacing="6">
+                            <Button Grid.Column="0" Width="32"
+                                    Command="{Binding FirstSpritePageCommand}"
+                                    ToolTip.Tip="Pierwsza strona sprite'ów.">
+                                <Path Width="16" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                      Data="M 2,2 L 2,14 M 13,2 L 7,8 L 13,14"/>
+                            </Button>
+                            <Button Grid.Column="1" Width="32"
+                                    Command="{Binding PreviousSpritePageCommand}"
+                                    ToolTip.Tip="Poprzednia strona sprite'ów.">
+                                <Path Width="12" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                      Data="M 9,2 L 3,8 L 9,14"/>
+                            </Button>
+                            <TextBlock Grid.Column="2" Text="{Binding SpritePageInfo}"
+                                       FontSize="10" Foreground="#94A3B8"
+                                       TextAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <Button Grid.Column="3" Width="32"
+                                    Command="{Binding NextSpritePageCommand}"
+                                    ToolTip.Tip="Następna strona sprite'ów.">
+                                <Path Width="12" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                      Data="M 3,2 L 9,8 L 3,14"/>
+                            </Button>
+                            <Button Grid.Column="4" Width="32"
+                                    Command="{Binding LastSpritePageCommand}"
+                                    ToolTip.Tip="Ostatnia strona sprite'ów.">
+                                <Path Width="16" Height="14" Stretch="Uniform" Stroke="White" StrokeThickness="2"
+                                      Data="M 14,2 L 14,14 M 3,2 L 9,8 L 3,14"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+        </Grid><!-- koniec 3-kolumnowego grida -->
+
+        <!-- ╔══════════════════════════════════════════════════════════════════════
+             ║  PASEK STATUSU
+             ╚══════════════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="2" Background="#020617" Padding="10,4"
+                BorderBrush="#1E293B" BorderThickness="0,1,0,0">
+            <TextBlock Text="{Binding StatusText}" Foreground="#64748B" FontSize="11"/>
+        </Border>
+
+    </Grid>
+</UserControl>

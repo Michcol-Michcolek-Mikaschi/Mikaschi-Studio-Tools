@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Modules.OldItemEditor.Views.OldItemEditorPreferencesWindow"
+        Title="Preferencje"
+        Width="570" Height="355"
+        MinWidth="570" MinHeight="355"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="Auto,*,Auto" Background="#080E1A">
+        <Border Grid.Row="0" Background="#0D1728" BorderBrush="#25344C" BorderThickness="0,0,0,1" Padding="18,14">
+            <StackPanel Spacing="3">
+                <TextBlock Text="Preferencje klienta" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="Domyślny klient używany do weryfikacji i aktualizacji items.otb." Classes="muted" FontSize="11"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Margin="16" Background="#0C1424" BorderBrush="#22314A" BorderThickness="1" CornerRadius="7" Padding="14">
+            <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox x:Name="DirectoryTextBox" PlaceholderText="Folder zawierający Tibia.dat i Tibia.spr" TextChanged="DirectoryTextBox_TextChanged"/>
+                    <Button Grid.Column="1" Content="Przeglądaj…" MinWidth="105" Click="Browse_Click"/>
+                </Grid>
+
+                <WrapPanel Grid.Row="1" ItemSpacing="18">
+                    <CheckBox x:Name="ExtendedCheckBox" Content="Extended"/>
+                    <CheckBox x:Name="FrameDurationsCheckBox" Content="Frame Durations"/>
+                    <CheckBox x:Name="TransparencyCheckBox" Content="Transparency"/>
+                </WrapPanel>
+
+                <TextBlock Grid.Row="2" Text="Opcje wymagane przez rozpoznaną wersję klienta są włączane automatycznie." Classes="muted" FontSize="10.5"/>
+
+                <Border Grid.Row="3" Background="#08101D" BorderBrush="#1E2A3D" BorderThickness="1" CornerRadius="5" Padding="10">
+                    <TextBlock x:Name="ValidationText" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Background="#111827" BorderBrush="#26344B" BorderThickness="0,1,0,0" Padding="12">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="Wyczyść" MinWidth="90" Click="Clear_Click"/>
+                <Button Content="Anuluj" MinWidth="90" Click="Cancel_Click"/>
+                <Button x:Name="ConfirmButton" Content="Zatwierdź" MinWidth="105" Click="Confirm_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

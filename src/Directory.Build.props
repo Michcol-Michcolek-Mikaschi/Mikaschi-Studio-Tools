@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <!-- Wszystkie wyniki projektów z src trafiają do jednego, ignorowanego katalogu. -->
+    <BuildRoot>$(MSBuildThisFileDirectory)..\build\</BuildRoot>
+    <BaseOutputPath>$(BuildRoot)bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(BuildRoot)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

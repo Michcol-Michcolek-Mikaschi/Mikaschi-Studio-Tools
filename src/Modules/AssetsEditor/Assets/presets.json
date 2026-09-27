@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Tibia 13.30+",
+    "clientVersion": "13.30",
+    "shiftMin": -32,
+    "shiftMax": 32,
+    "maxLevel": 999,
+    "imbueableSlotCountMax": 3,
+    "notes": "Aktualny klient CipSoft / OTClient mehah. Shift -32..+32 zgodny z natywnym wyświetlaniem."
+  },
+  {
+    "name": "Tibia 12.x (Legacy)",
+    "clientVersion": "12.x",
+    "shiftMin": -32,
+    "shiftMax": 32,
+    "maxLevel": 999,
+    "imbueableSlotCountMax": 3,
+    "notes": "Klient Tibia 12 — format appearances.dat z catalog-content.json. Shift -32..+32."
+  },
+  {
+    "name": "opentibiabr",
+    "clientVersion": "otbr",
+    "shiftMin": -32,
+    "shiftMax": 32,
+    "maxLevel": 999,
+    "imbueableSlotCountMax": 3,
+    "notes": "OTClient opentibiabr fork — proto zgodny z mehah. Shift -32..+32."
+  },
+  {
+    "name": "Tibia (Free Shift)",
+    "clientVersion": "modded",
+    "shiftMin": -512,
+    "shiftMax": 512,
+    "maxLevel": 999,
+    "imbueableSlotCountMax": 3,
+    "notes": "Rozszerzony zakres Shift -512..+512 — dla zmodyfikowanych klientów / OTClientów akceptujących większe wartości."
+  },
+  {
+    "name": "Local Dev",
+    "clientVersion": "dev",
+    "shiftMin": -32768,
+    "shiftMax": 32767,
+    "maxLevel": 9999,
+    "imbueableSlotCountMax": 10,
+    "notes": "Bez ograniczeń — środowisko deweloperskie"
+  }
+]

@@ -1,0 +1,12 @@
+* text=auto
+*.pdb filter=lfs diff=lfs merge=lfs -text
+*.png binary
+*.bmp binary
+*.gif binary
+*.ico binary
+*.dll binary
+*.exe binary
+*.otb binary
+*.spr binary
+*.dat binary
+*.rtf binary

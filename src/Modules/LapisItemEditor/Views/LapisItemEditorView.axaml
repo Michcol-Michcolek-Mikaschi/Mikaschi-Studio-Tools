@@ -1,0 +1,187 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modules.LapisItemEditor.ViewModels"
+             x:Class="Modules.LapisItemEditor.Views.LapisItemEditorView"
+             x:DataType="vm:LapisItemEditorViewModel">
+
+    <Grid RowDefinitions="Auto,*" Background="#050911">
+        <Border Grid.Row="0" Classes="app-commandbar" Padding="12,8">
+            <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+                    <Button Content="Nowy OTB" Command="{Binding NewDocumentCommand}"/>
+                    <Button Grid.Column="1" Content="Otwórz OTB" Click="OpenOtb_Click"/>
+                    <TextBox Grid.Column="2"
+                             Text="{Binding FilePath}"
+                             PlaceholderText="Ścieżka do items.otb..."
+                             MinWidth="360"/>
+                    <Button Grid.Column="3" Content="Wczytaj ścieżkę" Command="{Binding LoadFromPathCommand}"/>
+                    <Button Grid.Column="4" Content="Zapisz" Command="{Binding SaveCommand}"/>
+                    <Button Grid.Column="5" Content="Zapisz jako" Click="SaveAsOtb_Click"/>
+                    <Button Grid.Column="6" Content="Porównaj OTB" Click="CompareOtb_Click"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <Button Content="Wczytaj assets folder" Click="OpenAssetsFolder_Click"
+                            ToolTip.Tip="Folder z catalog-content.json + appearances.dat + arkuszami sprite (LZMA). Wczytanie pokaże miniatury w tabeli."/>
+                    <TextBox Grid.Column="1"
+                             Text="{Binding AssetsFolderPath}"
+                             PlaceholderText="Folder assets Tibia 12+ (opcjonalny, dla miniatur)..."
+                             MinWidth="360"/>
+                    <TextBlock Grid.Column="2" Text="{Binding AssetsSummary}"
+                               Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                </Grid>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <Button Content="Wczytaj items.xml" Click="OpenItemsXml_Click"
+                            ToolTip.Tip="items.xml z serwera TFS/OTServ. Dopasowuje wpisy do ServerId i pokazuje nazwę, article oraz atrybuty (weight, slot, attack...)."/>
+                    <TextBox Grid.Column="1"
+                             Text="{Binding ItemsXmlPath}"
+                             PlaceholderText="Ścieżka do items.xml (opcjonalna, dla metadanych XML)..."
+                             MinWidth="360"/>
+                    <TextBlock Grid.Column="2" Text="{Binding ItemsXmlSummary}"
+                               Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                </Grid>
+                <Button Content="Wczytaj wszystko (OTB + XML + assets)"
+                        HorizontalAlignment="Stretch"
+                        Background="#1E40AF" Foreground="White" FontWeight="SemiBold"
+                        Padding="12,6"
+                        Command="{Binding LoadAllCommand}"
+                        ToolTip.Tip="Równolegle wczytuje 3 zasoby z podanych ścieżek w tle (nie blokuje UI). Wypełnij ścieżki w polach powyżej lub wybierz je przyciskami obok."/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,360" RowDefinitions="Auto,*" Margin="12" ColumnSpacing="12" RowSpacing="12">
+            <Border Grid.ColumnSpan="2" Classes="app-surface" Padding="12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding HeaderSummary}" FontWeight="SemiBold" Foreground="#E5EDF8"/>
+                        <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#94A3B8"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBox Text="{Binding Filter}"
+                                 Width="260"
+                                 PlaceholderText="Szukaj ID, clientId, nazwy, typu albo flagi..."/>
+                        <Button Content="Wyczyść" Command="{Binding ClearFilterCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" RowDefinitions="*,170" RowSpacing="12">
+                <Border Classes="app-panel" Padding="8">
+                    <DataGrid ItemsSource="{Binding Items}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column"
+                              CanUserSortColumns="True"
+                              SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Sprite" Width="44">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="vm:LapisItemRow">
+                                        <Image Source="{Binding Thumbnail}" Width="32" Height="32"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapInterpolationMode="None"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="SID" Binding="{Binding ServerId}" Width="70"/>
+                            <DataGridTextColumn Header="CID" Binding="{Binding ClientId}" Width="70"/>
+                            <DataGridTextColumn Header="Nazwa Tibia" Binding="{Binding AppearanceName}" Width="*"
+                                                CanUserSort="True"/>
+                            <DataGridTextColumn Header="Nazwa OTB" Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Nazwa XML" Binding="{Binding XmlName}" Width="*"/>
+                            <DataGridTextColumn Header="Art." Binding="{Binding XmlArticle}" Width="50"/>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding Type}" Width="110"/>
+                            <DataGridTextColumn Header="XML atrybuty" Binding="{Binding XmlSummary}" Width="2*"/>
+                            <DataGridTextColumn Header="Flagi" Binding="{Binding FlagsSummary}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+
+                <Border Grid.Row="1" Classes="app-panel" Padding="10">
+                    <Grid RowDefinitions="Auto,*">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Porównanie OTB" Classes="section-title"/>
+                                <TextBlock Text="{Binding CompareSummary}" Classes="muted" FontSize="11"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding ComparisonEntries.Count}" Classes="muted" VerticalAlignment="Center"/>
+                        </Grid>
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding ComparisonEntries}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column"
+                                  Margin="0,8,0,0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Typ" Binding="{Binding Kind}" Width="130"/>
+                                <DataGridTextColumn Header="SID" Binding="{Binding ServerId}" Width="70"/>
+                                <DataGridTextColumn Header="Item" Binding="{Binding Label}" Width="*"/>
+                                <DataGridTextColumn Header="Stare" Binding="{Binding OldValue}" Width="120"/>
+                                <DataGridTextColumn Header="Nowe" Binding="{Binding NewValue}" Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" Grid.Column="1">
+                <StackPanel Spacing="12">
+                    <Border Classes="app-panel" Padding="12">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="Inspektor itemu" Classes="section-title"/>
+                                    <TextBlock Text="{Binding SelectedItem.DisplayName}" Classes="muted" FontSize="11"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Dodaj" Command="{Binding AddEmptyItemCommand}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="105,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="8">
+                                <TextBlock Text="Server ID" Classes="muted" VerticalAlignment="Center"/>
+                                <NumericUpDown Grid.Column="1" Value="{Binding SelectedServerId}" Minimum="0" Maximum="65535"/>
+
+                                <TextBlock Grid.Row="1" Text="Client ID" Classes="muted" VerticalAlignment="Center"/>
+                                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding SelectedClientId}" Minimum="0" Maximum="65535"/>
+
+                                <TextBlock Grid.Row="2" Text="Nazwa" Classes="muted" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SelectedName}"/>
+
+                                <TextBlock Grid.Row="3" Text="Typ" Classes="muted" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Row="3" Grid.Column="1"
+                                          ItemsSource="{Binding SelectedTypeLabels}"
+                                          SelectedIndex="{Binding SelectedTypeIndex}"/>
+
+                                <TextBlock Grid.Row="4" Text="Speed" Classes="muted" VerticalAlignment="Center"/>
+                                <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding SelectedSpeed}" Minimum="0" Maximum="65535"/>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Zastosuj" Command="{Binding ApplySelectedFieldsCommand}"/>
+                                <Button Content="Duplikuj" Command="{Binding DuplicateSelectedCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="app-panel" Padding="12">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Flagi OTB" Classes="section-title"/>
+                            <ItemsControl ItemsSource="{Binding Flags}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:LapisItemFlagState">
+                                        <CheckBox IsChecked="{Binding IsEnabled}"
+                                                  Content="{Binding Label}"
+                                                  ToolTip.Tip="{Binding Description}"
+                                                  Margin="0,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

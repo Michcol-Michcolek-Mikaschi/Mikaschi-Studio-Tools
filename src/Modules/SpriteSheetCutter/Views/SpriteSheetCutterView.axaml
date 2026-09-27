@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modules.SpriteSheetCutter.ViewModels"
+             x:Class="Modules.SpriteSheetCutter.Views.SpriteSheetCutterView"
+             x:DataType="vm:SpriteSheetCutterViewModel">
+    <Design.DataContext>
+        <vm:SpriteSheetCutterViewModel/>
+    </Design.DataContext>
+    <Grid RowDefinitions="Auto,*" Margin="16">
+        <StackPanel Grid.Row="0" Spacing="8">
+            <TextBlock Text="Sprite Sheet Cutter" FontSize="20" FontWeight="Bold"/>
+            <TextBlock Text="Cięcie sprite sheet'ów na klatki animacji" Opacity="0.7"/>
+            <Separator/>
+            <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="6">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Folder wejściowy:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding InputFolder}" PlaceholderText="Ścieżka do folderu z sprite sheet'ami..."/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Folder wyjściowy:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding OutputFolder}" PlaceholderText="Ścieżka do folderu z klatkami..."/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Szerokość sprite (px):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding SpriteWidth}" Minimum="1" Maximum="512"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Wysokość sprite (px):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding SpriteHeight}" Minimum="1" Maximum="512"/>
+            </Grid>
+            <Button Content="Wytnij klatki" Command="{Binding CutCommand}"
+                    IsEnabled="{Binding !IsBusy}" HorizontalAlignment="Left"/>
+        </StackPanel>
+        <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+            <TextBox Text="{Binding StatusLog}" IsReadOnly="True" TextWrapping="Wrap"
+                     FontFamily="Monospace" AcceptsReturn="True"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
