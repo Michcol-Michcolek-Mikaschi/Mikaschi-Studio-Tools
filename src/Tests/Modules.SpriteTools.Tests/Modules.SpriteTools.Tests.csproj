@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Narzedzia.Contracts\Narzedzia.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\SpriteResizer\Modules.SpriteResizer.csproj" />
     <ProjectReference Include="..\..\Modules\SpriteSheetCutter\Modules.SpriteSheetCutter.csproj" />
   </ItemGroup>

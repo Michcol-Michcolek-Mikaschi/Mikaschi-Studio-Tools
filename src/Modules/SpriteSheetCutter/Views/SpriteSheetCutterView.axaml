@@ -1,35 +1,105 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Modules.SpriteSheetCutter.ViewModels"
+             xmlns:services="using:Modules.SpriteSheetCutter.Services"
              x:Class="Modules.SpriteSheetCutter.Views.SpriteSheetCutterView"
              x:DataType="vm:SpriteSheetCutterViewModel">
     <Design.DataContext>
         <vm:SpriteSheetCutterViewModel/>
     </Design.DataContext>
-    <Grid RowDefinitions="Auto,*" Margin="16">
-        <StackPanel Grid.Row="0" Spacing="8">
-            <TextBlock Text="Sprite Sheet Cutter" FontSize="20" FontWeight="Bold"/>
-            <TextBlock Text="Cięcie sprite sheet'ów na klatki animacji" Opacity="0.7"/>
-            <Separator/>
-            <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="6">
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Folder wejściowy:" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding InputFolder}" PlaceholderText="Ścieżka do folderu z sprite sheet'ami..."/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Folder wyjściowy:" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding OutputFolder}" PlaceholderText="Ścieżka do folderu z klatkami..."/>
+    <UserControl.Styles>
+        <Style Selector="Border.sprite-drop-zone">
+            <Setter Property="BorderBrush" Value="#3E669B"/>
+            <Setter Property="Background" Value="#101A2B"/>
+        </Style>
+        <Style Selector="Border.sprite-drop-zone.drag-valid">
+            <Setter Property="BorderBrush" Value="#43A3FF"/>
+            <Setter Property="Background" Value="#142C49"/>
+        </Style>
+        <Style Selector="Border.sprite-drop-zone.drag-invalid">
+            <Setter Property="BorderBrush" Value="#E76F79"/>
+            <Setter Property="Background" Value="#351923"/>
+        </Style>
+    </UserControl.Styles>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Szerokość sprite (px):" VerticalAlignment="Center"/>
-                <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding SpriteWidth}" Minimum="1" Maximum="512"/>
-
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Wysokość sprite (px):" VerticalAlignment="Center"/>
-                <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding SpriteHeight}" Minimum="1" Maximum="512"/>
-            </Grid>
-            <Button Content="Wytnij klatki" Command="{Binding CutCommand}"
-                    IsEnabled="{Binding !IsBusy}" HorizontalAlignment="Left"/>
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16" RowSpacing="12">
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Cięcie arkuszy sprite'ów" FontSize="20" FontWeight="Bold"/>
+            <TextBlock Text="Podziel arkusz na ponumerowane klatki, korzystając z oryginalnych presetów OTClient."
+                       TextWrapping="Wrap" Opacity="0.72"/>
         </StackPanel>
-        <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
-            <TextBox Text="{Binding StatusLog}" IsReadOnly="True" TextWrapping="Wrap"
-                     FontFamily="Monospace" AcceptsReturn="True"/>
-        </ScrollViewer>
+
+        <Border x:Name="CutterDropZone"
+                Grid.Row="1"
+                Classes="sprite-drop-zone"
+                Padding="10"
+                BorderThickness="1"
+                CornerRadius="5"
+                DragDrop.AllowDrop="True">
+            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="9" RowSpacing="8">
+                <TextBlock x:Name="CutterDropHintText"
+                           Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+                           Text="Przeciągnij tutaj jeden lokalny plik PNG albo wybierz go z dysku."
+                           TextWrapping="Wrap"
+                           Foreground="#8FC7FF"
+                           FontWeight="SemiBold"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Plik wejściowy:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding InputFilePath}" IsReadOnly="True"
+                         PlaceholderText="Wybierz arkusz sprite'ów…"/>
+                <Button Grid.Row="1" Grid.Column="2" Content="Wybierz plik…" Click="SelectFile_Click"
+                        IsEnabled="{Binding !IsBusy}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Rozmiar sprite'a:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                          ItemsSource="{Binding Presets}"
+                          SelectedItem="{Binding SelectedPreset}"
+                          IsEnabled="{Binding !IsBusy}"
+                          MaxDropDownHeight="420">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="services:SpriteSizePreset">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Folder wynikowy:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding OutputFolder}" IsReadOnly="True"
+                         PlaceholderText="Folder sliced_sprites zostanie utworzony obok arkusza."/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
+            <Button Grid.Column="0" Content="Podgląd z liniami cięcia" Command="{Binding PreviewCommand}"/>
+            <Button Grid.Column="1" Content="Przetnij arkusz" Command="{Binding CutCommand}"/>
+            <Button Grid.Column="2" Content="Anuluj" Command="{Binding CancelCommand}"/>
+            <StackPanel Grid.Column="3" Margin="12,0,0,0" Spacing="4">
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="{Binding CompletedFrames}"/>
+                        <TextBlock Text="/"/>
+                        <TextBlock Text="{Binding TotalFrames}"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="3" BorderBrush="#33445E" BorderThickness="1" CornerRadius="4" Padding="10">
+            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                <TextBlock Grid.Row="0" Text="{Binding PreviewInfo}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <Image Source="{Binding PreviewImage}"
+                           IsVisible="{Binding HasPreview}"
+                           MaxWidth="800"
+                           MaxHeight="600"
+                           Stretch="None"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Top"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

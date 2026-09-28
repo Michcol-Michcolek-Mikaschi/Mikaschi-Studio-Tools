@@ -1,14 +1,19 @@
 # Sprite Sheet Cutter
 
-Moduł do cięcia sprite sheet'ów na klatki animacji. Przepisanie sprite_sheet_cutter.py na C# z SixLabors.ImageSharp.
+Natywna migracja `sprite_sheet_cutter.py` do Avalonia/.NET z wykorzystaniem ImageSharp.
+Moduł nie uruchamia Pythona, konsoli ani procesów zewnętrznych.
 
-## Funkcje
+## Przetwarzanie
 
-- Cięcie sprite sheet'ów na klatki animacji
-- Konfiguracja SPRITE_SIZES z UI
-- Batch processing wielu plików
-- Obsługa różnych rozmiarów sprite'ów (32x32, 64x64, itp.)
+- pojedynczy arkusz wejściowy wybierany z okna systemowego albo przez przeciągnięcie;
+- zapamiętywanie ostatniego folderu wejściowego;
+- oryginalna lista 294 presetów rozmiaru;
+- domyślny preset `64x64 (2×2)`;
+- podgląd z czerwonymi liniami cięcia;
+- podgląd ograniczony do 800×600 px, bez powiększania, skalowany filtrem Lanczos;
+- cięcie w kolejności wierszowej;
+- zachowanie niepełnych komórek z przezroczystym dopełnieniem do pełnego rozmiaru;
+- zapis do `sliced_sprites` obok arkusza jako `sprite_000.png`, `sprite_001.png` itd.;
+- postęp i anulowanie operacji.
 
-## Status
-
-✅ Zaimplementowano — serwis, ViewModel, widok UI oraz testy jednostkowe.
+Zachowanie, presety i nazewnictwo wyników odpowiadają oryginalnemu narzędziu.

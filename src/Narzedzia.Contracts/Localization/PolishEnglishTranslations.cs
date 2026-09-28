@@ -24,6 +24,28 @@ internal static class PolishEnglishTranslations
                 "AI sprite and animation generator (ComfyUI) — Outfit/Item/Effect/Missile",
             ["Narzędzie do skalowania sprite'ów"] = "Sprite scaling tool",
             ["Narzędzie do cięcia sprite sheet'ów"] = "Sprite sheet cutting tool",
+            ["Menedżer katalogów potworów i NPC"] = "Monster and NPC catalogue manager",
+            ["Program używa tylko źródeł wskazanych tutaj. Nie wyszukuje silnika ani katalogów nadrzędnych."] =
+                "The program only uses sources selected here. It does not search for the server engine or parent folders.",
+            ["Włącz lub wyłącz to źródło"] = "Enable or disable this source",
+            ["Katalog"] = "Folder",
+            ["Plik XML"] = "XML file",
+            ["Nie dodano jeszcze żadnego źródła. Dodaj katalog albo plik XML."] =
+                "No source has been added yet. Add a folder or an XML file.",
+            ["Dodaj katalog…"] = "Add folder…",
+            ["Dodaj XML…"] = "Add XML…",
+            ["Przenieś wyżej"] = "Move up",
+            ["Przenieś niżej"] = "Move down",
+            ["Wczytaj ponownie"] = "Reload",
+            ["Późniejsze źródło na liście ma pierwszeństwo przy tej samej nazwie stworzenia."] =
+                "A later source in the list takes precedence when creature names are identical.",
+            ["Wczytuj zapamiętane źródła przy uruchomieniu"] = "Load remembered sources at startup",
+            ["Zarządzaj katalogami potworów / NPC…"] = "Manage monster / NPC catalogues…",
+            ["Wybierz katalog potworów lub NPC"] = "Select a monster or NPC folder",
+            ["Wybierz monsters.xml, creatures.xml, potwora lub NPC"] =
+                "Select monsters.xml, creatures.xml, a monster or an NPC",
+            ["Źródła: wbudowane rme-data, stworzenia zapisane na mapie oraz zapamiętane katalogi/XML. Program nie przeszukuje folderów silnika."] =
+                "Sources: built-in rme-data, creatures stored in the map, and remembered folders/XML files. The program does not scan server-engine folders.",
 
             // Wspólne akcje i pola
             ["Otwórz folder"] = "Open folder",
@@ -706,6 +728,72 @@ internal static class PolishEnglishTranslations
 
             // Resizer, Cutter, Spider
             ["w budowie"] = "under construction",
+            ["Skalowanie sprite'ów"] = "Sprite scaling",
+            ["Przytnij puste marginesy, zmniejsz proporcjonalnie i wycentruj sprite na przezroczystym płótnie."] =
+                "Crop empty margins, scale down proportionally, and center the sprite on a transparent canvas.",
+            ["Pliki wejściowe PNG"] = "Input PNG files",
+            ["Wybierz pliki PNG…"] = "Select PNG files…",
+            ["Rozmiar docelowy"] = "Target size",
+            ["Szerokość:"] = "Width:",
+            ["Wysokość:"] = "Height:",
+            ["Wyniki są zapisywane obok oryginałów jako nazwa_WxH_clean.png."] =
+                "Results are saved beside the originals as name_WxH_clean.png.",
+            ["Przetwórz"] = "Process",
+            ["Wybierz pliki PNG do skalowania"] = "Select PNG files to resize",
+            ["Wybierz pliki PNG do przetworzenia."] = "Select PNG files to process.",
+            ["Wybrano plików: {0}"] = "Selected files: {0}",
+            ["Przeciągnij tutaj jeden lub wiele lokalnych plików PNG"] =
+                "Drag one or more local PNG files here",
+            ["Upuść, aby dodać pliki PNG"] = "Drop to add the PNG files",
+            ["Można dodać wyłącznie lokalne pliki PNG"] = "Only local PNG files can be added",
+            ["Dodano plików PNG: {0}. Pominięto niepoprawnych: {1}."] =
+                "PNG files added: {0}. Invalid files skipped: {1}.",
+            ["Dodano plików PNG: {0}. Pominięto duplikatów: {1}."] =
+                "PNG files added: {0}. Duplicates skipped: {1}.",
+            ["Dodano plików PNG: {0}."] = "PNG files added: {0}.",
+            ["Wszystkie przeciągnięte pliki PNG są już na liście."] =
+                "All dragged PNG files are already on the list.",
+            ["Nie dodano plików. Upuść lokalne pliki PNG."] =
+                "No files were added. Drop local PNG files.",
+            ["Przetwarzanie sprite'ów…"] = "Processing sprites…",
+            ["[{0}/{1}] Przetworzono: {2}"] = "[{0}/{1}] Processed: {2}",
+            ["[{0}/{1}] Błąd: {2} — {3}"] = "[{0}/{1}] Error: {2} — {3}",
+            ["Gotowe: {0} OK, {1} błędów. Pliki zapisano obok oryginałów."] =
+                "Done: {0} OK, {1} errors. Files were saved beside the originals.",
+            ["Anulowano przetwarzanie."] = "Processing cancelled.",
+            ["Błąd: {0}"] = "Error: {0}",
+            ["Cięcie arkuszy sprite'ów"] = "Sprite sheet cutting",
+            ["Podziel arkusz na ponumerowane klatki, korzystając z oryginalnych presetów OTClient."] =
+                "Split a sheet into numbered frames using the original OTClient presets.",
+            ["Plik wejściowy:"] = "Input file:",
+            ["Wybierz arkusz sprite'ów…"] = "Select a sprite sheet…",
+            ["Wybierz plik…"] = "Select file…",
+            ["Przeciągnij tutaj jeden lokalny plik PNG albo wybierz go z dysku."] =
+                "Drag one local PNG file here or select it from disk.",
+            ["Upuść, aby wybrać arkusz PNG"] = "Drop to select the PNG sheet",
+            ["Można wybrać wyłącznie jeden lokalny plik PNG"] =
+                "Only one local PNG file can be selected",
+            ["Upuść dokładnie jeden lokalny plik PNG."] =
+                "Drop exactly one local PNG file.",
+            ["Rozmiar sprite'a:"] = "Sprite size:",
+            ["Folder wynikowy:"] = "Output folder:",
+            ["Folder sliced_sprites zostanie utworzony obok arkusza."] =
+                "The sliced_sprites folder will be created beside the sheet.",
+            ["Podgląd z liniami cięcia"] = "Preview with cutting lines",
+            ["Przetnij arkusz"] = "Cut sheet",
+            ["Wybierz arkusz sprite'ów"] = "Select a sprite sheet",
+            ["Wybierz arkusz sprite'ów do przecięcia."] = "Select a sprite sheet to cut.",
+            ["Wybrano: {0}"] = "Selected: {0}",
+            ["Wybrano rozmiar sprite'a: {0}"] = "Selected sprite size: {0}",
+            ["Tworzenie podglądu…"] = "Creating preview…",
+            ["Arkusz: {0}×{1}px | Sprite: {2}×{3}px | Siatka: {4}×{5} | Klatki: {6}"] =
+                "Sheet: {0}×{1}px | Sprite: {2}×{3}px | Grid: {4}×{5} | Frames: {6}",
+            ["Podgląd jest gotowy."] = "Preview is ready.",
+            ["Cięcie arkusza sprite'ów…"] = "Cutting the sprite sheet…",
+            ["Wycinanie klatki {0}/{1}…"] = "Cutting frame {0}/{1}…",
+            ["Gotowe: wycięto {0} klatek. Zapisano w: {1}"] =
+                "Done: cut {0} frames. Saved to: {1}",
+            ["Anulowano operację."] = "Operation cancelled.",
             ["Skalowanie sprite'ów PNG z zachowaniem przezroczystości magenta"] =
                 "Scale PNG sprites while preserving magenta transparency",
             ["Cięcie sprite sheet'ów na klatki animacji"] = "Cut sprite sheets into animation frames",

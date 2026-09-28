@@ -43,10 +43,14 @@ public sealed class RmeCreatureCatalogService
 
     public RmeCreatureImportResult ImportFromOtFiles(
         IEnumerable<string> paths,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? allowedRoot = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
         cancellationToken.ThrowIfCancellationRequested();
+        var normalizedRoot = string.IsNullOrWhiteSpace(allowedRoot)
+            ? null
+            : Path.GetFullPath(allowedRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var imported = new Dictionary<string, RmeCreatureDefinition>(StringComparer.OrdinalIgnoreCase);
         var warnings = new List<string>();
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -56,7 +60,7 @@ public sealed class RmeCreatureCatalogService
             if (string.IsNullOrWhiteSpace(path)) continue;
             try
             {
-                ImportFile(Path.GetFullPath(path), imported, warnings, visited, cancellationToken);
+                ImportFile(Path.GetFullPath(path), imported, warnings, visited, cancellationToken, normalizedRoot);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
                                            System.Xml.XmlException or ArgumentException)
@@ -72,10 +76,16 @@ public sealed class RmeCreatureCatalogService
         IDictionary<string, RmeCreatureDefinition> imported,
         ICollection<string> warnings,
         ISet<string> visited,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? allowedRoot)
     {
         cancellationToken.ThrowIfCancellationRequested();
         path = Path.GetFullPath(path);
+        if (allowedRoot is not null && !IsPathInsideRoot(path, allowedRoot))
+        {
+            warnings.Add($"Pominięto odwołanie poza wybranym źródłem: {path}.");
+            return;
+        }
         if (!visited.Add(path)) return;
         if (!File.Exists(path))
         {
@@ -105,7 +115,7 @@ public sealed class RmeCreatureCatalogService
                 var nestedPath = Path.GetFullPath(Path.Combine(directory, relative));
                 try
                 {
-                    ImportFile(nestedPath, imported, warnings, visited, cancellationToken);
+                    ImportFile(nestedPath, imported, warnings, visited, cancellationToken, allowedRoot);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
                                                System.Xml.XmlException or ArgumentException)
@@ -175,6 +185,13 @@ public sealed class RmeCreatureCatalogService
         element is not null && uint.TryParse(Attribute(element, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
             ? value
             : 0;
+
+    private static bool IsPathInsideRoot(string path, string root)
+    {
+        if (path.Equals(root, StringComparison.OrdinalIgnoreCase)) return true;
+        var prefix = root + Path.DirectorySeparatorChar;
+        return path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 public sealed record RmeCreatureDefinition(string Name, bool IsNpc, uint LookType, uint LookItem);

@@ -9,7 +9,6 @@ using Modules.AssetsEditor;
 using Modules.ObjectBuilder;
 using Modules.LapisItemEditor;
 using Modules.OldItemEditor;
-using Modules.SpiderConverter;
 using Modules.SpriteResizer;
 using Modules.SpriteSheetCutter;
 using Modules.MapEditor;
@@ -56,7 +55,6 @@ public partial class App : Application
             loader.RegisterModule(new ObjectBuilderModule());
             loader.RegisterModule(new LapisItemEditorModule());
             loader.RegisterModule(new OldItemEditorModule());
-            loader.RegisterModule(new SpiderConverterModule());
             loader.RegisterModule(new SpriteResizerModule());
             loader.RegisterModule(new SpriteSheetCutterModule());
             loader.RegisterModule(new MapEditorModule());

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Globalization;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,6 +23,7 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
     private readonly MapMinimapService _minimapService = new();
     private readonly RmeMaterialCatalogService _materialLoader = new();
     private readonly RmeCreatureCatalogService _creatureLoader = new();
+    private readonly CreatureImportSourceService _creatureSourceLoader = new();
     private readonly MapEditHistory _history = new();
     private readonly MapVersionConversionService _conversion = new();
     private readonly Random _brushRandom = new();
@@ -31,7 +33,12 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
     private RmeConnectedBrushService? _connectedBrushes;
     private IReadOnlyDictionary<string, RmeCreatureDefinition> _creatureDefinitions =
         new Dictionary<string, RmeCreatureDefinition>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, RmeCreatureDefinition> _builtInCreatureDefinitions =
+        new Dictionary<string, RmeCreatureDefinition>(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, RmeCreatureDefinition> _manualCreatureDefinitions =
+        new Dictionary<string, RmeCreatureDefinition>(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _importedCreatureNames = new(StringComparer.OrdinalIgnoreCase);
+    private CancellationTokenSource? _creatureSourcesCancellation;
     private readonly Dictionary<byte, int> _floorTileCounts = [];
     private readonly HashSet<OtbmTileCoord> _spawnCenters = [];
     private readonly Dictionary<byte, IReadOnlyList<OtbmSpawn>> _spawnsByFloor = [];
@@ -114,6 +121,9 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
             ? preferences.BrushShape
             : "Kwadrat";
         _automagic = preferences.Automagic;
+        _autoLoadCreatureSources = preferences.AutoLoadCreatureSources;
+        foreach (var source in preferences.CreatureSources)
+            AddCreatureSourceEntry(new CreatureImportSourceViewModel(source));
     }
 
     [ObservableProperty] private string _title = "Map Editor (RME Redux)";
@@ -139,6 +149,10 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string _loadProgressLabel = "0%";
     [ObservableProperty] private bool _isLoadProgressIndeterminate;
     [ObservableProperty] private bool _isDirty;
+    [ObservableProperty] private bool _autoLoadCreatureSources = true;
+    [ObservableProperty] private bool _isCreatureSourcesLoading;
+    [ObservableProperty] private string _creatureSourcesSummary = "Nie dodano ręcznych źródeł potworów/NPC.";
+    [ObservableProperty] private CreatureImportSourceViewModel? _selectedCreatureSource;
     [ObservableProperty] private bool _showGrid;
     [ObservableProperty] private bool _showHouses = true;
     [ObservableProperty] private bool _showSpawns = true;
@@ -388,6 +402,11 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
 
     public void ActivateSelectedPalette() => ActivatePaletteSection(SelectedPaletteSection);
 
+    public event EventHandler? CreatureSourcesConfigurationChanged;
+
+    partial void OnAutoLoadCreatureSourcesChanged(bool value) =>
+        CreatureSourcesConfigurationChanged?.Invoke(this, EventArgs.Empty);
+
     public MapEditorPreferences CapturePreferences()
     {
         if (!IsPalettePlaceholder(SelectedPaletteGroup))
@@ -397,7 +416,11 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
             new Dictionary<string, string>(_paletteGroupMemory, StringComparer.OrdinalIgnoreCase),
             BrushSize,
             BrushShape,
-            Automagic);
+            Automagic)
+        {
+            AutoLoadCreatureSources = AutoLoadCreatureSources,
+            CreatureSources = CreatureSources.Select(source => source.ToPreference()).ToArray()
+        };
     }
 
     public void SelectWorkspacePanel(string panel)
@@ -3502,35 +3525,191 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
 
     public async Task ImportCreatureFilesAsync(IReadOnlyList<string> paths)
     {
-        if (paths.Count == 0) return;
+        await AddCreatureSourcesAsync(paths.Select(path =>
+            new CreatureImportSourcePreference(path, CreatureImportSourceKind.XmlFile))).ConfigureAwait(true);
+    }
+
+    public Task AddCreatureDirectoriesAsync(IEnumerable<string> paths) =>
+        AddCreatureSourcesAsync(paths.Select(path =>
+            new CreatureImportSourcePreference(path, CreatureImportSourceKind.Directory)));
+
+    public async Task AddCreatureSourcesAsync(IEnumerable<CreatureImportSourcePreference> sources)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+        CreatureImportSourceViewModel? lastAdded = null;
+        foreach (var source in sources)
+        {
+            string fullPath;
+            try
+            {
+                fullPath = Path.GetFullPath(source.Path.Trim());
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                continue;
+            }
+
+            if (CreatureSources.Any(existing =>
+                    existing.Path.Equals(fullPath, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            lastAdded = new CreatureImportSourceViewModel(source with { Path = fullPath });
+            AddCreatureSourceEntry(lastAdded);
+        }
+
+        if (lastAdded is null) return;
+        SelectedCreatureSource = lastAdded;
+        CreatureSourcesConfigurationChanged?.Invoke(this, EventArgs.Empty);
+        await ReloadCreatureSourcesAsync().ConfigureAwait(true);
+    }
+
+    public async Task RemoveSelectedCreatureSourceAsync()
+    {
+        if (SelectedCreatureSource is not { } source) return;
+        var oldIndex = CreatureSources.IndexOf(source);
+        source.PropertyChanged -= CreatureSourceEntry_PropertyChanged;
+        CreatureSources.Remove(source);
+        OnPropertyChanged(nameof(IsCreatureSourcesEmpty));
+        SelectedCreatureSource = CreatureSources.Count == 0
+            ? null
+            : CreatureSources[Math.Clamp(oldIndex, 0, CreatureSources.Count - 1)];
+        CreatureSourcesConfigurationChanged?.Invoke(this, EventArgs.Empty);
+        await ReloadCreatureSourcesAsync().ConfigureAwait(true);
+    }
+
+    public async Task MoveSelectedCreatureSourceAsync(int offset)
+    {
+        if (SelectedCreatureSource is not { } source || offset == 0) return;
+        var oldIndex = CreatureSources.IndexOf(source);
+        var newIndex = Math.Clamp(oldIndex + Math.Sign(offset), 0, CreatureSources.Count - 1);
+        if (oldIndex < 0 || oldIndex == newIndex) return;
+        CreatureSources.Move(oldIndex, newIndex);
+        CreatureSourcesConfigurationChanged?.Invoke(this, EventArgs.Empty);
+        await ReloadCreatureSourcesAsync().ConfigureAwait(true);
+    }
+
+    public async Task InitializeCreatureSourcesAsync()
+    {
+        if (CreatureSources.Count == 0)
+        {
+            CreatureSourcesSummary = "Nie dodano ręcznych źródeł potworów/NPC.";
+            return;
+        }
+        if (!AutoLoadCreatureSources)
+        {
+            CreatureSourcesSummary = "Zapamiętane źródła czekają na ręczne wczytanie.";
+            foreach (var source in CreatureSources)
+                source.Status = source.IsEnabled ? "Oczekuje na ręczne wczytanie." : "Wyłączone.";
+            return;
+        }
+        await ReloadCreatureSourcesAsync().ConfigureAwait(true);
+    }
+
+    public async Task ReloadCreatureSourcesAsync()
+    {
+        var operation = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _creatureSourcesCancellation, operation);
+        previous?.Cancel();
+        previous?.Dispose();
+
+        var snapshot = CreatureSources.Select(source => source.ToPreference()).ToArray();
+        IsCreatureSourcesLoading = true;
+        CreatureSourcesSummary = "Wczytywanie źródeł potworów/NPC…";
         try
         {
-            var result = await Task.Run(() => _creatureLoader.ImportFromOtFiles(paths)).ConfigureAwait(true);
-            MergeCreatureDefinitions(result);
-            Status = $"Zaimportowano {result.Creatures.Count} definicji potworów/NPC." +
-                     (result.Warnings.Count > 0 ? $" Ostrzeżenia: {result.Warnings.Count}." : string.Empty);
-            MaterialStatus = Status + (result.Warnings.Count > 0
-                ? " " + string.Join(" ", result.Warnings.Take(3))
-                : string.Empty);
+            var result = await Task.Run(
+                () => _creatureSourceLoader.Load(snapshot, operation.Token),
+                operation.Token).ConfigureAwait(true);
+            operation.Token.ThrowIfCancellationRequested();
+            if (!ReferenceEquals(_creatureSourcesCancellation, operation)) return;
+
+            var results = result.Sources.ToDictionary(
+                source => SourceKey(source.Source),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var source in CreatureSources)
+            {
+                if (!source.IsEnabled)
+                {
+                    source.CreatureCount = 0;
+                    source.WarningCount = 0;
+                    source.Status = "Wyłączone.";
+                    continue;
+                }
+
+                if (!results.TryGetValue(SourceKey(source.ToPreference()), out var loaded))
+                {
+                    source.CreatureCount = 0;
+                    source.WarningCount = 1;
+                    source.Status = "Nie udało się wczytać źródła.";
+                    continue;
+                }
+
+                source.CreatureCount = loaded.Creatures.Count;
+                source.WarningCount = loaded.Warnings.Count;
+                source.Status = loaded.Warnings.Count == 0
+                    ? $"Wczytano {loaded.Creatures.Count} definicji."
+                    : $"Wczytano {loaded.Creatures.Count}; ostrzeżenia: {loaded.Warnings.Count}. " +
+                      loaded.Warnings[0];
+            }
+
+            _manualCreatureDefinitions = result.Creatures;
+            ComposeCreatureDefinitions();
+            BuildSelectedTilesetPalettes();
+            var warningCount = result.Sources.Sum(source => source.Warnings.Count);
+            CreatureSourcesSummary = $"Aktywne źródła: {result.Sources.Count}; " +
+                                     $"ręczne definicje: {result.Creatures.Count}; " +
+                                     $"ostrzeżenia: {warningCount}.";
+            Status = "Wczytano zapamiętane źródła potworów/NPC. " + CreatureSourcesSummary;
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (operation.IsCancellationRequested)
         {
-            Status = $"Błąd importu potworów/NPC: {ex.Message}";
+            // Nowsze przeładowanie zastąpiło bieżące.
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or
+                                       System.Xml.XmlException or ArgumentException)
+        {
+            if (ReferenceEquals(_creatureSourcesCancellation, operation))
+            {
+                CreatureSourcesSummary = $"Nie udało się wczytać źródeł: {ex.Message}";
+                Status = CreatureSourcesSummary;
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_creatureSourcesCancellation, operation))
+            {
+                _creatureSourcesCancellation = null;
+                IsCreatureSourcesLoading = false;
+            }
+            operation.Dispose();
         }
     }
 
-    private void MergeCreatureDefinitions(RmeCreatureImportResult result)
+    private void AddCreatureSourceEntry(CreatureImportSourceViewModel source)
     {
-        if (result.Creatures.Count == 0) return;
+        source.PropertyChanged += CreatureSourceEntry_PropertyChanged;
+        CreatureSources.Add(source);
+        OnPropertyChanged(nameof(IsCreatureSourcesEmpty));
+    }
+
+    private void CreatureSourceEntry_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(CreatureImportSourceViewModel.IsEnabled)) return;
+        CreatureSourcesConfigurationChanged?.Invoke(this, EventArgs.Empty);
+        _ = ReloadCreatureSourcesAsync();
+    }
+
+    private static string SourceKey(CreatureImportSourcePreference source) =>
+        $"{source.Kind}\0{Path.GetFullPath(source.Path)}";
+
+    private void ComposeCreatureDefinitions()
+    {
         var merged = new Dictionary<string, RmeCreatureDefinition>(
-            _creatureDefinitions, StringComparer.OrdinalIgnoreCase);
-        foreach (var (name, creature) in result.Creatures)
-        {
-            merged[name] = creature;
-            _importedCreatureNames.Add(name);
-        }
+            _builtInCreatureDefinitions, StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, definition) in _manualCreatureDefinitions)
+            merged[name] = definition;
         _creatureDefinitions = merged;
-        BuildSelectedTilesetPalettes();
+        _importedCreatureNames.Clear();
+        _importedCreatureNames.UnionWith(_manualCreatureDefinitions.Keys);
     }
 
     public async Task ExportTilesetsAsync(string path)
@@ -4270,6 +4449,7 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
     public ObservableCollection<OtbmHouse> HouseEntries { get; } = new();
     public ObservableCollection<OtbmWaypoint> WaypointEntries { get; } = new();
     public ObservableCollection<MapSearchResult> SearchResults { get; } = new();
+    public ObservableCollection<CreatureImportSourceViewModel> CreatureSources { get; } = new();
 
     public string TerrainPaletteHeader => $"Teren ({TerrainPalette.Count})";
     public string DoodadPaletteHeader => $"Dekoracje ({DoodadPalette.Count})";
@@ -4283,6 +4463,7 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
     public bool IsRawPaletteEmpty => RawPalette.Count == 0;
     public bool IsCollectionPaletteEmpty => CollectionPalette.Count == 0;
     public bool IsCreaturePaletteEmpty => CreaturePalette.Count == 0;
+    public bool IsCreatureSourcesEmpty => CreatureSources.Count == 0;
     public string PaletteEmptyMessage => string.IsNullOrWhiteSpace(PaletteSearch)
         ? "Ten tileset nie ma elementów w tej palecie. Wybierz inny tileset albo rodzaj palety."
         : $"Brak wyników dla „{PaletteSearch}”. Wyczyść wyszukiwanie albo wybierz inny tileset.";
@@ -6371,8 +6552,9 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
         _materials = null;
         _groundBorders = null;
         _connectedBrushes = null;
-        _importedCreatureNames.Clear();
-        _creatureDefinitions = new Dictionary<string, RmeCreatureDefinition>(StringComparer.OrdinalIgnoreCase);
+        _builtInCreatureDefinitions =
+            new Dictionary<string, RmeCreatureDefinition>(StringComparer.OrdinalIgnoreCase);
+        ComposeCreatureDefinitions();
         if (!_assets.IsLoaded)
         {
             RebuildPaletteNavigationGroups();
@@ -6390,12 +6572,13 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
                 string? creatureWarning = null;
                 try
                 {
-                    _creatureDefinitions = _creatureLoader.Load(_materials.VersionDirectory);
+                    _builtInCreatureDefinitions = _creatureLoader.Load(_materials.VersionDirectory);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Xml.XmlException or InvalidDataException)
                 {
                     creatureWarning = $" creatures.xml: {ex.Message}";
                 }
+                ComposeCreatureDefinitions();
                 foreach (var tileset in _materials.Tilesets)
                     Tilesets.Add(tileset);
                 MaterialStatus = $"RME: {Tilesets.Count} tilesetów, {_materials.Brushes.Count} brushy, " +
@@ -6420,6 +6603,7 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
         }
 
         BuildFallbackPalette();
+        ComposeCreatureDefinitions();
         RebuildPaletteNavigationGroups();
     }
 
@@ -6774,12 +6958,17 @@ public partial class MapEditorViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _loadCancellation?.Cancel();
+        var creatureSourcesCancellation = Interlocked.Exchange(ref _creatureSourcesCancellation, null);
+        creatureSourcesCancellation?.Cancel();
+        creatureSourcesCancellation?.Dispose();
         var minimapCancellation = Interlocked.Exchange(ref _minimapCancellation, null);
         minimapCancellation?.Cancel();
         minimapCancellation?.Dispose();
         SwapMinimapImage(null);
         _assets.Dispose();
         _retiredAssets.Dispose();
+        foreach (var source in CreatureSources)
+            source.PropertyChanged -= CreatureSourceEntry_PropertyChanged;
     }
 }
 

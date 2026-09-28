@@ -25,11 +25,14 @@ Potwory i NPC pochodzą z:
 
 1. wersjonowanego `rme-data/<wersja>/creatures.xml`;
 2. spawnów zapisanych w otwartej mapie;
-3. jawnego importu XML wykonanego przez użytkownika.
+3. katalogów lub plików XML jawnie dodanych przez użytkownika w menedżerze źródeł.
 
-Import ręczny obsługuje `monsters.xml`, pojedyncze pliki `monster`/`npc` oraz
-RME `creatures.xml`. Grafika outfitu pochodzi z klienta/assets wybranego ręcznie
-w interfejsie.
+Menedżer zapamiętuje kolejność, stan włączenia oraz opcję automatycznego
+wczytywania źródeł w lokalnych preferencjach. Import obsługuje katalogi
+`monster`/`monsters` i `npc`/`npcs`, `monsters.xml`, pojedyncze pliki
+`monster`/`npc` oraz RME `creatures.xml`. Nie wychodzi poza ręcznie wskazany
+katalog. Grafika outfitu pochodzi z klienta/assets wybranego ręcznie w
+interfejsie.
 
 ## Status
 

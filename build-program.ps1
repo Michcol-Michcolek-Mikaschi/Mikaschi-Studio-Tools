@@ -77,6 +77,30 @@ if (!(Test-Path -LiteralPath $executablePath)) {
     throw "Nie udało się nadać programowi docelowej nazwy: $executablePath"
 }
 
+# Aplikacja desktopowa musi być opublikowana jako Windows GUI. Wartość
+# WindowsCui powoduje otwarcie dodatkowego okna konsoli razem z programem.
+$executableStream = [System.IO.File]::OpenRead($executablePath)
+try {
+    $peReader = [System.Reflection.PortableExecutable.PEReader]::new($executableStream)
+    try {
+        $peHeader = $peReader.PEHeaders.PEHeader
+        if ($null -eq $peHeader) {
+            throw "Plik wykonywalny nie zawiera prawidłowego nagłówka PE: $executablePath"
+        }
+
+        $expectedSubsystem = [System.Reflection.PortableExecutable.Subsystem]::WindowsGui
+        if ($peHeader.Subsystem -ne $expectedSubsystem) {
+            throw "Nieprawidłowy podsystem pliku EXE: $($peHeader.Subsystem). Oczekiwano: $expectedSubsystem."
+        }
+    }
+    finally {
+        $peReader.Dispose()
+    }
+}
+finally {
+    $executableStream.Dispose()
+}
+
 # Po sprawdzeniu publikacji pośrednie pliki kompilatora nie są już potrzebne.
 # Dzięki temu istnieje tylko jedna uruchamialna kopia bieżącej wersji programu.
 foreach ($directory in $generatedDirectories) {

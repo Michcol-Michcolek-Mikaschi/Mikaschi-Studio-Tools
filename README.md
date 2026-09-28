@@ -20,12 +20,14 @@ Edytor korzysta wyłącznie z jawnych, odizolowanych źródeł:
 
 1. `rme-data/<wersja>/creatures.xml` dołączonego do programu;
 2. stworzeń i spawnów zapisanych w otwartej mapie OTBM oraz jej plikach danych;
-3. plików XML wybranych ręcznie przyciskiem **Importuj potwory / NPC z XML…**.
+3. katalogów lub plików XML dodanych ręcznie w **Menedżerze katalogów potworów i NPC**.
 
-Ręczny import obsługuje indeks `monsters.xml`, pojedyncze pliki `monster` i
-`npc` oraz plik RME `creatures.xml`. Program **nie wykrywa i nie przeszukuje
-automatycznie folderów silnika**. Silnik TFS, OTClient ani prywatne dane serwera
-nie są częścią tego repozytorium.
+Menedżer zapamiętuje źródła, ich kolejność i stan włączenia. Ręczny import
+obsługuje katalogi `monster`/`monsters` i `npc`/`npcs`, indeks `monsters.xml`,
+pojedyncze pliki `monster` i `npc` oraz plik RME `creatures.xml`. Program **nie
+wykrywa i nie przeszukuje automatycznie folderów silnika ani katalogów
+nadrzędnych**. Silnik TFS, OTClient ani prywatne dane serwera nie są częścią tego
+repozytorium.
 
 Wygląd stworzenia jest odczytywany z `looktype` albo `lookitem`, natomiast jego
 grafika pochodzi z folderu klienta/assets wskazanego ręcznie w Map Editorze.

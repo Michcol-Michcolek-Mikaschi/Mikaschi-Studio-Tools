@@ -6,30 +6,102 @@
     <Design.DataContext>
         <vm:SpriteResizerViewModel/>
     </Design.DataContext>
-    <Grid RowDefinitions="Auto,*" Margin="16">
-        <StackPanel Grid.Row="0" Spacing="8">
-            <TextBlock Text="Sprite Resizer" FontSize="20" FontWeight="Bold"/>
-            <TextBlock Text="Skalowanie sprite'ów PNG z zachowaniem przezroczystości magenta" Opacity="0.7"/>
-            <Separator/>
-            <Grid ColumnDefinitions="120,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="6">
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Folder wejściowy:" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding InputFolder}" PlaceholderText="Ścieżka do folderu z PNG..."/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Folder wyjściowy:" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding OutputFolder}" PlaceholderText="Ścieżka do folderu wyjściowego..."/>
+    <UserControl.Styles>
+        <Style Selector="Border.sprite-drop-zone">
+            <Setter Property="BorderBrush" Value="#33445E"/>
+            <Setter Property="Background" Value="#0A1222"/>
+        </Style>
+        <Style Selector="Border.sprite-drop-zone.drag-valid">
+            <Setter Property="BorderBrush" Value="#43A3FF"/>
+            <Setter Property="Background" Value="#142C49"/>
+        </Style>
+        <Style Selector="Border.sprite-drop-zone.drag-invalid">
+            <Setter Property="BorderBrush" Value="#E76F79"/>
+            <Setter Property="Background" Value="#351923"/>
+        </Style>
+    </UserControl.Styles>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Szerokość (px):" VerticalAlignment="Center"/>
-                <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding TargetWidth}" Minimum="1" Maximum="1024"/>
-
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Wysokość (px):" VerticalAlignment="Center"/>
-                <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding TargetHeight}" Minimum="1" Maximum="1024"/>
-            </Grid>
-            <Button Content="Skaluj batch" Command="{Binding ResizeCommand}"
-                    IsEnabled="{Binding !IsBusy}" HorizontalAlignment="Left"/>
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16" RowSpacing="12">
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Skalowanie sprite'ów" FontSize="20" FontWeight="Bold"/>
+            <TextBlock Text="Przytnij puste marginesy, zmniejsz proporcjonalnie i wycentruj sprite na przezroczystym płótnie."
+                       TextWrapping="Wrap" Opacity="0.72"/>
         </StackPanel>
-        <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
-            <TextBox Text="{Binding StatusLog}" IsReadOnly="True" TextWrapping="Wrap"
-                     FontFamily="Monospace" AcceptsReturn="True"/>
-        </ScrollViewer>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Pliki wejściowe PNG" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding SelectionSummary}" Opacity="0.7"/>
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Content="Wybierz pliki PNG…"
+                    Click="SelectFiles_Click"
+                    IsEnabled="{Binding !IsBusy}"
+                    VerticalAlignment="Center"/>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <Border x:Name="DropSurface"
+                    Classes="sprite-drop-zone"
+                    DragDrop.AllowDrop="True"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="6"
+                    MinHeight="132">
+                <Grid RowDefinitions="Auto,*" RowSpacing="5">
+                    <TextBlock x:Name="DropHintText"
+                               Text="Przeciągnij tutaj jeden lub wiele lokalnych plików PNG"
+                               Foreground="#79BEFF"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"/>
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding InputFiles}"
+                             Background="Transparent"
+                             MaxHeight="190">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SpriteInputFileViewModel">
+                                <StackPanel Margin="2,4">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding FullPath}" FontSize="11" Opacity="0.62" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Column="1" MinWidth="250" Spacing="8">
+                <TextBlock Text="Rozmiar docelowy" FontWeight="SemiBold"/>
+                <Grid ColumnDefinitions="Auto,100,Auto,100" ColumnSpacing="7">
+                    <TextBlock Grid.Column="0" Text="Szerokość:" VerticalAlignment="Center"/>
+                    <NumericUpDown Grid.Column="1" Value="{Binding TargetWidth}" Minimum="1" Maximum="2147483647"/>
+                    <TextBlock Grid.Column="2" Text="Wysokość:" VerticalAlignment="Center"/>
+                    <NumericUpDown Grid.Column="3" Value="{Binding TargetHeight}" Minimum="1" Maximum="2147483647"/>
+                </Grid>
+                <TextBlock Text="Wyniki są zapisywane obok oryginałów jako nazwa_WxH_clean.png."
+                           TextWrapping="Wrap" FontSize="11" Opacity="0.68"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Przetwórz" Command="{Binding ResizeCommand}"/>
+                    <Button Content="Anuluj" Command="{Binding CancelCommand}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="3" RowDefinitions="Auto,Auto,*" RowSpacing="7">
+            <ProgressBar Grid.Row="0" Minimum="0" Maximum="100" Value="{Binding ProgressValue}"/>
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="{Binding CompletedFiles}"/>
+                    <TextBlock Text="/"/>
+                    <TextBlock Text="{Binding TotalFiles}"/>
+                </StackPanel>
+            </Grid>
+            <Border Grid.Row="2" BorderBrush="#33445E" BorderThickness="1" CornerRadius="4" Padding="6">
+                <ListBox ItemsSource="{Binding StatusEntries}"/>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

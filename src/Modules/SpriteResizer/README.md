@@ -1,14 +1,17 @@
 # Sprite Resizer
 
-Moduł do skalowania sprite'ów PNG z zachowaniem przezroczystości magenta. Przepisanie sprite_resizer.py na C# z SixLabors.ImageSharp.
+Natywna migracja `sprite_resizer.py` do Avalonia/.NET z wykorzystaniem ImageSharp.
+Moduł nie uruchamia Pythona, konsoli ani procesów zewnętrznych.
 
-## Funkcje
+## Przetwarzanie
 
-- Batch resize sprite'ów PNG
-- Zachowanie przezroczystości magenta (255, 0, 255)
-- Konfiguracja rozmiaru docelowego z UI
-- Obsługa folderów wejściowych/wyjściowych
+- wybór wielu plików PNG z okna systemowego albo przez przeciągnięcie;
+- dodawanie przeciągniętych plików bez duplikatów i zapamiętywanie ostatniego folderu;
+- zamiana dokładnego koloru `#FF00FF` na pełną przezroczystość;
+- wykrycie granic widocznego sprite'a i usunięcie pustych marginesów;
+- proporcjonalne skalowanie wyłącznie w dół filtrem nearest-neighbor;
+- wyśrodkowanie bez powiększania na przezroczystym płótnie docelowym;
+- zapis obok oryginału jako `<nazwa>_<szerokość>x<wysokość>_clean.png`;
+- postęp, raport błędów i anulowanie operacji.
 
-## Status
-
-✅ Zaimplementowano — serwis, ViewModel, widok UI oraz testy jednostkowe.
+Zachowanie algorytmu i nazewnictwo wyników odpowiadają oryginalnemu narzędziu.

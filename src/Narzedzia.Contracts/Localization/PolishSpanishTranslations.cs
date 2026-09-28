@@ -35,6 +35,95 @@ internal static class PolishSpanishTranslations
             ["Narzędzie do skalowania sprite'ów"] = "Herramienta para redimensionar sprites",
             ["Sprite Sheet Cutter"] = "Cortador de hojas de sprites",
             ["Narzędzie do cięcia sprite sheet'ów"] = "Herramienta para cortar hojas de sprites",
+            ["Skalowanie sprite'ów"] = "Redimensionado de sprites",
+            ["Przytnij puste marginesy, zmniejsz proporcjonalnie i wycentruj sprite na przezroczystym płótnie."] =
+                "Recorta los márgenes vacíos, reduce proporcionalmente y centra el sprite en un lienzo transparente.",
+            ["Pliki wejściowe PNG"] = "Archivos PNG de entrada",
+            ["Wybierz pliki PNG…"] = "Seleccionar archivos PNG…",
+            ["Rozmiar docelowy"] = "Tamaño de destino",
+            ["Szerokość:"] = "Anchura:",
+            ["Wysokość:"] = "Altura:",
+            ["Wyniki są zapisywane obok oryginałów jako nazwa_WxH_clean.png."] =
+                "Los resultados se guardan junto a los originales como nombre_WxH_clean.png.",
+            ["Przetwórz"] = "Procesar",
+            ["Wybierz pliki PNG do skalowania"] = "Seleccionar archivos PNG para redimensionar",
+            ["Wybierz pliki PNG do przetworzenia."] = "Selecciona archivos PNG para procesarlos.",
+            ["Wybrano plików: {0}"] = "Archivos seleccionados: {0}",
+            ["Przeciągnij tutaj jeden lub wiele lokalnych plików PNG"] =
+                "Arrastra aquí uno o varios archivos PNG locales",
+            ["Upuść, aby dodać pliki PNG"] = "Suelta para añadir los archivos PNG",
+            ["Można dodać wyłącznie lokalne pliki PNG"] =
+                "Solo se pueden añadir archivos PNG locales",
+            ["Dodano plików PNG: {0}. Pominięto niepoprawnych: {1}."] =
+                "Archivos PNG añadidos: {0}. Archivos no válidos omitidos: {1}.",
+            ["Dodano plików PNG: {0}. Pominięto duplikatów: {1}."] =
+                "Archivos PNG añadidos: {0}. Duplicados omitidos: {1}.",
+            ["Dodano plików PNG: {0}."] = "Archivos PNG añadidos: {0}.",
+            ["Wszystkie przeciągnięte pliki PNG są już na liście."] =
+                "Todos los archivos PNG arrastrados ya están en la lista.",
+            ["Nie dodano plików. Upuść lokalne pliki PNG."] =
+                "No se añadieron archivos. Suelta archivos PNG locales.",
+            ["Przetwarzanie sprite'ów…"] = "Procesando sprites…",
+            ["[{0}/{1}] Przetworzono: {2}"] = "[{0}/{1}] Procesado: {2}",
+            ["[{0}/{1}] Błąd: {2} — {3}"] = "[{0}/{1}] Error: {2} — {3}",
+            ["Gotowe: {0} OK, {1} błędów. Pliki zapisano obok oryginałów."] =
+                "Listo: {0} correctos, {1} errores. Los archivos se guardaron junto a los originales.",
+            ["Anulowano przetwarzanie."] = "Procesamiento cancelado.",
+            ["Błąd: {0}"] = "Error: {0}",
+            ["Cięcie arkuszy sprite'ów"] = "Corte de hojas de sprites",
+            ["Podziel arkusz na ponumerowane klatki, korzystając z oryginalnych presetów OTClient."] =
+                "Divide una hoja en fotogramas numerados usando los preajustes originales de OTClient.",
+            ["Plik wejściowy:"] = "Archivo de entrada:",
+            ["Wybierz arkusz sprite'ów…"] = "Seleccionar una hoja de sprites…",
+            ["Wybierz plik…"] = "Seleccionar archivo…",
+            ["Przeciągnij tutaj jeden lokalny plik PNG albo wybierz go z dysku."] =
+                "Arrastra aquí un archivo PNG local o selecciónalo desde el disco.",
+            ["Upuść, aby wybrać arkusz PNG"] = "Suelta para seleccionar la hoja PNG",
+            ["Można wybrać wyłącznie jeden lokalny plik PNG"] =
+                "Solo se puede seleccionar un archivo PNG local",
+            ["Upuść dokładnie jeden lokalny plik PNG."] =
+                "Suelta exactamente un archivo PNG local.",
+            ["Rozmiar sprite'a:"] = "Tamaño del sprite:",
+            ["Folder wynikowy:"] = "Carpeta de salida:",
+            ["Folder sliced_sprites zostanie utworzony obok arkusza."] =
+                "La carpeta sliced_sprites se creará junto a la hoja.",
+            ["Podgląd z liniami cięcia"] = "Vista previa con líneas de corte",
+            ["Przetnij arkusz"] = "Cortar hoja",
+            ["Wybierz arkusz sprite'ów"] = "Seleccionar una hoja de sprites",
+            ["Wybierz arkusz sprite'ów do przecięcia."] = "Selecciona una hoja de sprites para cortarla.",
+            ["Wybrano: {0}"] = "Seleccionado: {0}",
+            ["Wybrano rozmiar sprite'a: {0}"] = "Tamaño de sprite seleccionado: {0}",
+            ["Tworzenie podglądu…"] = "Creando vista previa…",
+            ["Arkusz: {0}×{1}px | Sprite: {2}×{3}px | Siatka: {4}×{5} | Klatki: {6}"] =
+                "Hoja: {0}×{1}px | Sprite: {2}×{3}px | Cuadrícula: {4}×{5} | Fotogramas: {6}",
+            ["Podgląd jest gotowy."] = "La vista previa está lista.",
+            ["Cięcie arkusza sprite'ów…"] = "Cortando la hoja de sprites…",
+            ["Wycinanie klatki {0}/{1}…"] = "Cortando fotograma {0}/{1}…",
+            ["Gotowe: wycięto {0} klatek. Zapisano w: {1}"] =
+                "Listo: se cortaron {0} fotogramas. Guardado en: {1}",
+            ["Anulowano operację."] = "Operación cancelada.",
+            ["Menedżer katalogów potworów i NPC"] = "Gestor de catálogos de monstruos y NPC",
+            ["Program używa tylko źródeł wskazanych tutaj. Nie wyszukuje silnika ani katalogów nadrzędnych."] =
+                "El programa solo usa las fuentes indicadas aquí. No busca el motor del servidor ni carpetas superiores.",
+            ["Włącz lub wyłącz to źródło"] = "Activar o desactivar esta fuente",
+            ["Katalog"] = "Carpeta",
+            ["Plik XML"] = "Archivo XML",
+            ["Nie dodano jeszcze żadnego źródła. Dodaj katalog albo plik XML."] =
+                "Todavía no se ha añadido ninguna fuente. Añade una carpeta o un archivo XML.",
+            ["Dodaj katalog…"] = "Añadir carpeta…",
+            ["Dodaj XML…"] = "Añadir XML…",
+            ["Przenieś wyżej"] = "Mover arriba",
+            ["Przenieś niżej"] = "Mover abajo",
+            ["Wczytaj ponownie"] = "Volver a cargar",
+            ["Późniejsze źródło na liście ma pierwszeństwo przy tej samej nazwie stworzenia."] =
+                "Una fuente posterior de la lista tiene prioridad cuando el nombre de la criatura es idéntico.",
+            ["Wczytuj zapamiętane źródła przy uruchomieniu"] = "Cargar las fuentes recordadas al iniciar",
+            ["Zarządzaj katalogami potworów / NPC…"] = "Gestionar catálogos de monstruos / NPC…",
+            ["Wybierz katalog potworów lub NPC"] = "Selecciona una carpeta de monstruos o NPC",
+            ["Wybierz monsters.xml, creatures.xml, potwora lub NPC"] =
+                "Selecciona monsters.xml, creatures.xml, un monstruo o un NPC",
+            ["Źródła: wbudowane rme-data, stworzenia zapisane na mapie oraz zapamiętane katalogi/XML. Program nie przeszukuje folderów silnika."] =
+                "Fuentes: rme-data integrado, criaturas guardadas en el mapa y carpetas/XML recordados. El programa no examina carpetas del motor del servidor.",
             ["Map Editor"] = "Editor de mapas",
             ["Edytor map OTBM"] = "Editor de mapas OTBM",
             ["Generator Sprite'ów AI"] = "Generador de sprites con IA",

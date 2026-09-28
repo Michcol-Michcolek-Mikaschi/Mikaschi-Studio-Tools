@@ -543,10 +543,10 @@
                                         <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding DefaultSpawnTime}"
                                                        Minimum="1" Maximum="86400" ShowButtonSpinner="True"/>
                                         <Button Grid.Row="2" Grid.ColumnSpan="2" Classes="tool"
-                                                Content="Importuj potwory / NPC z XML…" Click="ImportCreatures_Click"/>
+                                                Content="Zarządzaj katalogami potworów / NPC…" Click="ImportCreatures_Click"/>
                                         <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Classes="muted"
                                                    Margin="0,3,0,0" TextWrapping="Wrap"
-                                                   Text="Źródła: wbudowane rme-data, stworzenia zapisane na mapie oraz XML wybrane ręcznie. Program nie przeszukuje folderów silnika."/>
+                                                   Text="Źródła: wbudowane rme-data, stworzenia zapisane na mapie oraz zapamiętane katalogi/XML. Program nie przeszukuje folderów silnika."/>
                                     </Grid>
                                 </Border>
                                 <Grid>
@@ -804,7 +804,7 @@
                                     <ComboBox ItemsSource="{Binding ImportHouseModes}" SelectedItem="{Binding ImportHouseMode}"/>
                                     <CheckBox Content="Merge spawns" IsChecked="{Binding ImportSpawns}"/>
                                     <Button Classes="primary" Content="Wybierz i importuj mapę…" Click="ImportOtbm_Click"/>
-                                    <Button Classes="tool" Content="Import Monsters/NPC…" Click="ImportCreatures_Click"/>
+                                     <Button Classes="tool" Content="Zarządzaj katalogami potworów / NPC…" Click="ImportCreatures_Click"/>
                                     <Button Classes="tool" Content="Export Tilesets…" Click="ExportTilesets_Click"/>
                                     <Border Height="1" Background="#334155" Margin="0,6"/>
                                     <TextBlock Text="Find" Foreground="#E5EDF8" FontWeight="SemiBold"/>

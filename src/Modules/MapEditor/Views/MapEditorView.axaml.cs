@@ -37,6 +37,7 @@ public partial class MapEditorView : UserControl
     private readonly DispatcherTimer _preferenceSaveTimer;
     private readonly MapEditorPreferencesStore _preferencesStore = new();
     private MenuFlyout? _paletteGroupFlyout;
+    private bool _creatureSourcesInitialized;
 
     public MapEditorView()
     {
@@ -44,6 +45,7 @@ public partial class MapEditorView : UserControl
         var viewModel = new MapEditorViewModel(_preferencesStore.Load());
         DataContext = viewModel;
         viewModel.PropertyChanged += OnPreferencePropertyChanged;
+        viewModel.CreatureSourcesConfigurationChanged += OnCreatureSourcesConfigurationChanged;
         SizeChanged += OnSizeChanged;
         _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _animationTimer.Tick += (_, _) =>
@@ -56,7 +58,13 @@ public partial class MapEditorView : UserControl
             _preferenceSaveTimer.Stop();
             SavePreferences();
         };
-        AttachedToVisualTree += (_, _) => _animationTimer.Start();
+        AttachedToVisualTree += async (_, _) =>
+        {
+            _animationTimer.Start();
+            if (_creatureSourcesInitialized) return;
+            _creatureSourcesInitialized = true;
+            await viewModel.InitializeCreatureSourcesAsync();
+        };
         DetachedFromVisualTree += (_, _) =>
         {
             CancelActiveViewportInteraction();
@@ -74,6 +82,12 @@ public partial class MapEditorView : UserControl
         if (e.PropertyName is not (nameof(MapEditorViewModel.SelectedPaletteSection) or
             nameof(MapEditorViewModel.SelectedPaletteGroup) or nameof(MapEditorViewModel.BrushSize) or
             nameof(MapEditorViewModel.BrushShape) or nameof(MapEditorViewModel.Automagic))) return;
+        _preferenceSaveTimer.Stop();
+        _preferenceSaveTimer.Start();
+    }
+
+    private void OnCreatureSourcesConfigurationChanged(object? sender, EventArgs e)
+    {
         _preferenceSaveTimer.Stop();
         _preferenceSaveTimer.Start();
     }
@@ -578,19 +592,11 @@ public partial class MapEditorView : UserControl
 
     private async void ImportCreatures_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not MapEditorViewModel vm || TopLevel.GetTopLevel(this) is not { } top)
+        if (DataContext is not MapEditorViewModel vm || TopLevel.GetTopLevel(this) is not Window owner)
             return;
-        var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = LocalizationManager.Translate("Importuj monsters.xml, potwora lub NPC"),
-            AllowMultiple = true,
-            FileTypeFilter = [XmlFileType]
-        });
-        var paths = files.Select(file => file.TryGetLocalPath())
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Cast<string>()
-            .ToArray();
-        if (paths.Length > 0) await vm.ImportCreatureFilesAsync(paths);
+        var dialog = new CreatureSourcesWindow(vm);
+        await dialog.ShowDialog(owner);
+        SavePreferences();
     }
 
     private async void ExportTilesets_Click(object? sender, RoutedEventArgs e)

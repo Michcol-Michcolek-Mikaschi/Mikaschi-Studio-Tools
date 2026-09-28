@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -33,7 +33,6 @@
     <ProjectReference Include="..\Modules\ObjectBuilder\Modules.ObjectBuilder.csproj" />
     <ProjectReference Include="..\Modules\LapisItemEditor\Modules.LapisItemEditor.csproj" />
     <ProjectReference Include="..\Modules\OldItemEditor\Modules.OldItemEditor.csproj" />
-    <ProjectReference Include="..\Modules\SpiderConverter\Modules.SpiderConverter.csproj" />
     <ProjectReference Include="..\Modules\SpriteResizer\Modules.SpriteResizer.csproj" />
     <ProjectReference Include="..\Modules\SpriteSheetCutter\Modules.SpriteSheetCutter.csproj" />
     <ProjectReference Include="..\Modules\MapEditor\Modules.MapEditor.csproj" />

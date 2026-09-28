@@ -19,7 +19,6 @@
           "Modules.MapEditor": "1.0.0",
           "Modules.ObjectBuilder": "1.0.0",
           "Modules.OldItemEditor": "1.0.0",
-          "Modules.SpiderConverter": "1.0.0",
           "Modules.SpriteGenerator": "1.0.0",
           "Modules.SpriteResizer": "1.0.0",
           "Modules.SpriteSheetCutter": "1.0.0",
@@ -1211,20 +1210,6 @@
           }
         }
       },
-      "Modules.SpiderConverter/1.0.0": {
-        "dependencies": {
-          "Avalonia": "12.0.2",
-          "CommunityToolkit.Mvvm": "8.4.2",
-          "Narzedzia.Contracts": "1.0.0",
-          "Narzedzia.Core": "1.0.0"
-        },
-        "runtime": {
-          "Modules.SpiderConverter.dll": {
-            "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.0.0"
-          }
-        }
-      },
       "Modules.SpriteGenerator/1.0.0": {
         "dependencies": {
           "Avalonia": "12.0.2",
@@ -1542,11 +1527,6 @@
       "sha512": ""
     },
     "Modules.OldItemEditor/1.0.0": {
-      "type": "project",
-      "serviceable": false,
-      "sha512": ""
-    },
-    "Modules.SpiderConverter/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

@@ -1,0 +1,80 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Modules.MapEditor.ViewModels"
+        x:Class="Modules.MapEditor.Views.CreatureSourcesWindow"
+        x:DataType="vm:MapEditorViewModel"
+        Title="Menedżer katalogów potworów i NPC"
+        Width="920" Height="610" MinWidth="720" MinHeight="480"
+        WindowStartupLocation="CenterOwner" Background="#080E1A">
+    <Grid RowDefinitions="Auto,*,Auto" Background="#080E1A">
+        <Border Background="#0D1728" BorderBrush="#25344C" BorderThickness="0,0,0,1" Padding="18,14">
+            <StackPanel Spacing="3">
+                <TextBlock Text="Menedżer katalogów potworów i NPC" FontSize="19" FontWeight="SemiBold"/>
+                <TextBlock Text="Program używa tylko źródeł wskazanych tutaj. Nie wyszukuje silnika ani katalogów nadrzędnych."
+                           Classes="muted" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,154" Margin="16" ColumnSpacing="10">
+            <Border Background="#0C1424" BorderBrush="#22314A" BorderThickness="1" CornerRadius="7" Padding="8">
+                <Grid>
+                    <ListBox ItemsSource="{Binding CreatureSources}"
+                             SelectedItem="{Binding SelectedCreatureSource}"
+                             Background="#08101D" BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CreatureImportSourceViewModel">
+                                <Border BorderBrush="#26344B" BorderThickness="0,0,0,1" Padding="8,7">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                        <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Top"
+                                                  ToolTip.Tip="Włącz lub wyłącz to źródło"/>
+                                        <StackPanel Grid.Column="1" Spacing="2">
+                                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding KindLabel}" Classes="muted"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding CountLabel}" Foreground="#7DD3FC"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding Path}" Classes="muted" FontFamily="Consolas"
+                                                       FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" FontSize="10.5"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="Nie dodano jeszcze żadnego źródła. Dodaj katalog albo plik XML."
+                               IsVisible="{Binding IsCreatureSourcesEmpty}"
+                               Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"/>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Column="1" Spacing="7">
+                <Button Content="Dodaj katalog…" Click="AddDirectory_Click" HorizontalContentAlignment="Center"/>
+                <Button Content="Dodaj XML…" Click="AddXml_Click" HorizontalContentAlignment="Center"/>
+                <Border Height="1" Background="#26344B" Margin="0,3"/>
+                <Button Content="Usuń" Click="Remove_Click" HorizontalContentAlignment="Center"/>
+                <Button Content="Przenieś wyżej" Click="MoveUp_Click" HorizontalContentAlignment="Center"/>
+                <Button Content="Przenieś niżej" Click="MoveDown_Click" HorizontalContentAlignment="Center"/>
+                <Border Height="1" Background="#26344B" Margin="0,3"/>
+                <Button Content="Wczytaj ponownie" Click="Reload_Click" HorizontalContentAlignment="Center"/>
+                <TextBlock Text="Późniejsze źródło na liście ma pierwszeństwo przy tej samej nazwie stworzenia."
+                           Classes="muted" FontSize="10.5" TextWrapping="Wrap" Margin="2,5"/>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="2" Background="#111827" BorderBrush="#26344B" BorderThickness="0,1,0,0" Padding="14,10">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+                <CheckBox Content="Wczytuj zapamiętane źródła przy uruchomieniu"
+                          IsChecked="{Binding AutoLoadCreatureSources}"/>
+                <Button Grid.Column="1" Grid.RowSpan="3" Content="Zamknij" MinWidth="105"
+                        Click="Close_Click" VerticalAlignment="Center"/>
+                <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="4"
+                             IsVisible="{Binding IsCreatureSourcesLoading}"/>
+                <TextBlock Grid.Row="2" Text="{Binding CreatureSourcesSummary}" Classes="muted"
+                           TextWrapping="Wrap"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
